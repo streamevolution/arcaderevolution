@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sopa Pro Revolution</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* PALETA DE COLORES */
+            --primary: #0984e3; --secondary: #6c5ce7; --accent: #e84393;
+            --bg-body: #dfe6e9; --surface: #ffffff; --text-main: #2d3436;
+            --gold: #f1c40f; --success: #00b894; --danger: #d63031;
+            --shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-body);
+            color: var(--text-main); height: 100dvh; overflow: hidden; display: flex;
+            flex-direction: column; user-select: none; -webkit-user-select: none;
+        }
+
+        /* --- SPLASH SCREEN --- */
+        #splash-screen {
+            position: fixed; inset: 0; z-index: 10000;
+            background: linear-gradient(135deg, #0984e3, #6c5ce7);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        #splash-screen.fade-out { opacity: 0; visibility: hidden; }
+        .splash-bg-letter { position: absolute; font-size: 15rem; font-weight: 900; opacity: 0.05; color: white; z-index: -1; animation: floatRotate 20s infinite linear; }
+        @keyframes floatRotate { 0%{transform:rotate(0deg) scale(1);} 50%{transform:rotate(180deg) scale(1.2);} 100%{transform:rotate(360deg) scale(1);} }
+        
+        .splash-title-container { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-bottom: 50px; }
+        .title-row-top { display: flex; gap: 3px; font-size: 3rem; font-weight: 900; letter-spacing: 2px; }
+        .title-row-bottom { display: flex; gap: 3px; font-size: 2.2rem; font-weight: 900; letter-spacing: 4px; margin-top: 5px; }
+        .wave-char { display: inline-block; animation: waveJump 1.5s infinite ease-in-out; text-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        @keyframes waveJump { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+        
+        .loading-wrapper { width: 70%; max-width: 280px; text-align: center; }
+        .loading-txt { margin-bottom: 10px; font-weight: 600; letter-spacing: 2px; font-size: 0.8rem; opacity: 0.9; }
+        .progress-track { width: 100%; height: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; padding: 2px; }
+        .progress-fill { height: 100%; background: #f1c40f; border-radius: 8px; width: 0%; animation: fillBar 5s linear forwards; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        @keyframes fillBar { 0%{width:0%} 100%{width:100%} }
+        .creator-sig { position: absolute; bottom: 30px; font-size: 0.85rem; opacity: 0.7; font-weight: 400; letter-spacing: 1px; }
+
+        /* --- MODAL SETUP (PERFIL) --- */
+        #modal-setup {
+            position: fixed; inset: 0; z-index: 9000; background: var(--bg-body);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; animation: slideUp 0.5s ease-out;
+        }
+        .setup-card {
+            background: var(--surface); width: 100%; max-width: 400px; border-radius: 24px;
+            padding: 30px; box-shadow: var(--shadow); text-align: center;
+            display: flex; flex-direction: column; gap: 20px; max-height: 90vh; overflow-y: auto;
+        }
+        .setup-title { color: var(--primary); font-size: 1.5rem; font-weight: 900; margin: 0; text-transform: uppercase; }
+        .setup-label { font-size: 0.9rem; font-weight: 700; color: #888; text-align: left; margin-bottom: 5px; display: block; }
+        
+        .inp-group { text-align: left; }
+        .inp-text {
+            width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 12px;
+            font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1rem; color: #333;
+            outline: none; transition: 0.3s; background: #f9f9f9;
+        }
+        .inp-text:focus { border-color: var(--primary); background: #fff; }
+
+        .emoji-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+            background: #f1f2f6; padding: 10px; border-radius: 12px;
+            max-height: 150px; overflow-y: auto;
+        }
+        .emoji-opt {
+            font-size: 1.8rem; cursor: pointer; border-radius: 8px; transition: 0.2s;
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border: 2px solid transparent;
+        }
+        .emoji-opt:hover { background: rgba(0,0,0,0.05); }
+        .emoji-opt.selected { background: white; border-color: var(--primary); transform: scale(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        /* --- ESTILOS GENERALES --- */
+        body.boss-mode { --bg-body: #1e272e; --surface: #2f3640; --text-main: #f5f6fa; --primary: #ff7675; }
+        body.boss-mode .cell { background: #353b48; color: #dcdde1; border: 1px solid #444; }
+        
+        @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+        @keyframes soundPop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        @keyframes pulseTimer { 0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.05); opacity:0.7;} }
+
+        .view { display: none; flex-direction: column; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; background: var(--bg-body); }
+        .view.active { display: flex; z-index: 20; animation: slideUp 0.3s ease-out; }
+
+        header { background: var(--surface); padding: 0 20px; height: 70px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 10px rgba(0,0,0,0.05); z-index: 30; flex-shrink: 0; }
+        h1 { margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .btn-icon { background: #f1f2f6; border: none; width: 45px; height: 45px; border-radius: 12px; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; color: var(--text-main); cursor: pointer; transition: 0.2s; }
+        .btn-icon:active { transform: scale(0.9); background: #dfe4ea; }
+
+        .scroll-y { flex: 1; overflow-y: auto; padding: 20px; touch-action: pan-y; padding-bottom: 100px; }
+        .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .card { background: var(--surface); border-radius: 20px; padding: 20px; text-align: center; box-shadow: var(--shadow); cursor: pointer; position: relative; border-bottom: 4px solid rgba(0,0,0,0.05); transition: transform 0.1s; color: var(--text-main); }
+        .card:active { transform: scale(0.96); border-bottom-width: 0px; transform: translateY(4px); }
+        .card-icon { font-size: 3rem; display: block; margin-bottom: 10px; }
+        .card-title { font-weight: 700; font-size: 1rem; display: block; margin-bottom: 5px; }
+        .card-prog { font-size: 0.75rem; font-weight: 700; background: #f1f2f6; color: #666; padding: 4px 12px; border-radius: 15px; display: inline-block; }
+
+        .lvl-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .lvl-btn { aspect-ratio: 1; border-radius: 14px; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; color: #bdc3c7; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; position: relative; border: 2px solid transparent; }
+        .lvl-btn.passed { background: #e0f2f1; color: var(--success); border-color: #b2dfdb; }
+        .lvl-btn.current { background: var(--primary); color: white; transform: scale(1.1); z-index: 2; box-shadow: 0 8px 20px rgba(9, 132, 227, 0.3); }
+        .lvl-btn.boss { border: 2px solid var(--danger); color: var(--danger); }
+        .lvl-btn.challenge { border: 2px dashed var(--obs-color); color: var(--obs-color); }
+        .stars-mini { display: flex; font-size: 0.6rem; margin-top: 2px; color: var(--gold); }
+
+        .game-ui { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; width: 100%; }
+        .hud { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; font-weight: 700; color: var(--text-main); font-size: 0.9rem; }
+        .timer-box { font-family: 'Courier New', monospace; color: var(--primary); font-weight: 900; font-size: 1.4rem; background: #f1f2f6; padding: 4px 15px; border-radius: 10px; border: 1px solid #ddd; }
+        .timer-box.paused { color: var(--danger); border-color: var(--danger); animation: pulseTimer 1s infinite; }
+        .obs-badge { background: var(--danger); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.75rem; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .grid-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; position: relative; }
+        .board { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 3px; background: var(--surface); padding: 8px; border-radius: 16px; box-shadow: var(--shadow); width: 100%; aspect-ratio: 1; max-width: 92vh; touch-action: none; transition: transform 0.5s ease; }
+        .board.shake { animation: shakeErr 0.4s; }
+        .board.obs-flash .cell { color: transparent; background: #000; }
+        .board.obs-flash .cell.selecting, .board.obs-flash .cell.found { color: white; }
+        .board.obs-quake { animation: quake 4s infinite; }
+        @keyframes quake { 0%,90%{transform:rotate(0)} 92%{transform:translate(2px,2px)} 94%{transform:translate(-2px,-2px)} 96%{transform:translate(2px,-2px)} 98%{transform:translate(-2px,2px)} }
+        .board.obs-mirror { transform: scaleX(-1); }
+        .board.obs-spin-90 { transform: rotate(90deg); }
+        .board.obs-spin-180 { transform: rotate(180deg); }
+        .board.obs-spin-270 { transform: rotate(270deg); }
+        .board.obs-dance .cell:nth-child(odd) { animation: danceA 2s infinite ease-in-out; }
+        .board.obs-dance .cell:nth-child(even) { animation: danceB 2.5s infinite ease-in-out; }
+        @keyframes danceA { 0%,100%{transform:translate(0,0)} 25%{transform:translate(1px,1px)} 50%{transform:translate(-1px,0)} 75%{transform:translate(0,-1px)} }
+        @keyframes danceB { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1px,-1px)} 50%{transform:translate(1px,0)} 75%{transform:translate(0,1px)} }
+        .board.obs-pulse { animation: boardPulse 3s infinite ease-in-out; }
+        @keyframes boardPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(0.95)} }
+        .board.obs-blur { animation: fogPass 5s infinite; }
+        @keyframes fogPass { 0%,40%,100%{filter:blur(0px)} 20%{filter:blur(3px)} }
+
+        .cell { display: flex; align-items: center; justify-content: center; font-weight: 800; color: #555; border-radius: 6px; background: #f1f2f6; font-size: calc((100vw - 40px) / var(--cols) * 0.7); user-select: none; transition: 0.15s; border: 1px solid transparent; }
+        @media(min-width: 600px) { .cell { font-size: calc(600px / var(--cols) * 0.7); } }
+        .cell.selecting { background: var(--primary) !important; color: white !important; transform: scale(1.1); z-index: 10; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .cell.found { color: white !important; animation: popIn 0.4s; }
+        .cell.secret { background: var(--gold) !important; color: #333 !important; box-shadow: 0 0 15px var(--gold); z-index: 5; }
+
+        .word-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; max-height: 30vh; overflow-y: auto; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); flex-shrink: 0; z-index: 25; }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .chip { font-size: 0.85rem; padding: 8px 15px; background: #f1f2f6; border-radius: 8px; color: #666; border: 1px solid #ddd; font-weight: 700; transition: 0.3s; }
+        body.boss-mode .chip { background: #444; color: #ccc; border-color: #555; }
+        .chips.dense .chip { font-size: 0.7rem; padding: 4px 10px; gap: 4px; }
+        .chip.done { background: var(--success); color: white; opacity: 1; border-color: var(--success); text-decoration: line-through; transform: scale(0.95); }
+
+        .modal-layer { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-box { background: white; padding: 30px; border-radius: 24px; text-align: center; width: 85%; max-width: 350px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .stars-cont { font-size: 3rem; color: #eee; margin: 15px 0; letter-spacing: 5px; }
+        .star-f { color: var(--gold); text-shadow: 0 2px 0px #d3a625; }
+        .star-e { color: #e0e0e0; }
+
+        .btn { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; margin-top: 15px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 5px 0 #0769b5; transition: all 0.1s; }
+        .btn:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+        .btn-sec { background: #f1f2f6; color: #555; box-shadow: 0 5px 0 #dcdde1; }
+        .btn-sec:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+
+        .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-50px); background: #2d3436; color: white; padding: 12px 30px; border-radius: 8px; font-size: 1rem; font-weight: 700; opacity: 0; pointer-events: none; transition: 0.4s; box-shadow: 0 10px 20px rgba(0,0,0,0.2); z-index: 3000; white-space: nowrap; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.secret { background: var(--success); }
+        .toast.alert { background: var(--danger); }
+
+        .sound-float { position: fixed; top: 80px; left: 15px; width: 40px; height: 40px; border-radius: 10px; border: none; background: white; color: var(--primary); font-size: 1.3rem; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 900; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
+        .sound-float:active { transform: scale(0.9); }
+        .sound-float.muted { background: #f1f2f6; color: #aaa; }
+        .sound-anim { animation: soundPop 0.3s; }
+
+        /* RANKING */
+        .rank-box { width: 100%; max-width: 500px; height: 85vh; border-radius: 24px 24px 0 0; padding: 20px; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: #fff; }
+        .rank-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .rank-stats { display: flex; justify-content: space-between; background: #f1f2f6; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; font-size: 0.9rem; }
+        body.boss-mode .rank-stats { background: #444; color: #fff; }
+        .rank-list { flex: 1; padding: 0; overflow-y: auto; padding-bottom: 20px; }
+        .rank-row { display: flex; align-items: center; padding: 10px; margin-bottom: 8px; background: var(--surface); border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .rank-row.me { border: 2px solid var(--primary); background: #e3f2fd; position: sticky; bottom: 0; z-index: 10; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+        body.boss-mode .rank-row.me { background: #2c3e50; border-color: var(--primary); }
+        body.boss-mode .rank-row { background: #353b48; border-color: #555; }
+        .r-pos { font-weight: 900; width: 35px; text-align: center; font-size: 1.1rem; color: #aaa; }
+        .r-pos.top-1 { color: #f1c40f; font-size: 1.5rem; text-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+        .r-pos.top-2 { color: #95a5a6; font-size: 1.3rem; text-shadow: 0 1px 0 rgba(0,0,0,0.1); }
+        .r-pos.top-3 { color: #e67e22; font-size: 1.2rem; text-shadow: 0 1px 0 rgba(0,0,0,0.1); }
+        .r-avatar { font-size: 1.5rem; margin: 0 10px; width: 40px; text-align: center; }
+        .r-info { flex: 1; text-align: left; }
+        .r-name { font-weight: 700; font-size: 0.95rem; display: block; color: var(--text-main); }
+        .r-badge { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: 600; }
+        .r-score { font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 4px; }
+        .r-score span { color: var(--gold); font-size: 0.8rem; }
+        
+        .confetti { position: fixed; top: -20px; width: 12px; height: 12px; z-index: 9999; pointer-events: none; animation: fall linear forwards; border-radius: 3px; }
+        @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen">
+    <div class="splash-bg-letter" style="top:10%; left:10%">A</div>
+    <div class="splash-bg-letter" style="bottom:20%; right:10%">Z</div>
+    <div class="splash-bg-letter" style="top:50%; left:80%">S</div>
+    <div class="splash-bg-letter" style="bottom:10%; left:20%">R</div>
+
+    <div class="splash-title-container">
+        <div class="title-row-top">
+            <span class="wave-char" style="animation-delay:0.0s">S</span>
+            <span class="wave-char" style="animation-delay:0.1s">O</span>
+            <span class="wave-char" style="animation-delay:0.2s">P</span>
+            <span class="wave-char" style="animation-delay:0.3s">A</span>
+            <span style="width:20px"></span>
+            <span class="wave-char" style="animation-delay:0.4s">P</span>
+            <span class="wave-char" style="animation-delay:0.5s">R</span>
+            <span class="wave-char" style="animation-delay:0.6s">O</span>
+        </div>
+        <div class="title-row-bottom">
+            <span class="wave-char" style="animation-delay:0.7s; color:#f1c40f">R</span>
+            <span class="wave-char" style="animation-delay:0.8s; color:#f1c40f">E</span>
+            <span class="wave-char" style="animation-delay:0.9s; color:#f1c40f">V</span>
+            <span class="wave-char" style="animation-delay:1.0s; color:#f1c40f">O</span>
+            <span class="wave-char" style="animation-delay:1.1s; color:#f1c40f">L</span>
+            <span class="wave-char" style="animation-delay:1.2s; color:#f1c40f">U</span>
+            <span class="wave-char" style="animation-delay:1.3s; color:#f1c40f">T</span>
+            <span class="wave-char" style="animation-delay:1.4s; color:#f1c40f">I</span>
+            <span class="wave-char" style="animation-delay:1.5s; color:#f1c40f">O</span>
+            <span class="wave-char" style="animation-delay:1.6s; color:#f1c40f">N</span>
+        </div>
+    </div>
+
+    <div class="loading-wrapper">
+        <div class="loading-txt">CARGANDO EL JUEGO...</div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+    </div>
+    <div class="creator-sig">Creado por Juan Zamora</div>
+</div>
+
+<!-- MODAL PRIMERA VEZ (SETUP) -->
+<div id="modal-setup">
+    <div class="setup-card">
+        <h2 class="setup-title">¡Bienvenido!</h2>
+        <p style="color:#666; margin-top:0;">Configura tu perfil de jugador</p>
+
+        <div class="inp-group">
+            <label class="setup-label">Nombre</label>
+            <input type="text" id="input-name" class="inp-text" placeholder="Tu nombre aquí" maxlength="12">
+        </div>
+
+        <div class="inp-group">
+            <label class="setup-label">País</label>
+            <select id="input-country" class="inp-text">
+                <option value="MEXICO" selected>🇲🇽 México</option>
+                <option value="USA">🇺🇸 USA</option>
+                <option value="COLOMBIA">🇨🇴 Colombia</option>
+                <option value="ARGENTINA">🇦🇷 Argentina</option>
+                <option value="ESPAÑA">🇪🇸 España</option>
+                <option value="PERU">🇵🇪 Perú</option>
+                <option value="CHILE">🇨🇱 Chile</option>
+            </select>
+        </div>
+
+        <div class="inp-group">
+            <label class="setup-label">Elige tu Avatar</label>
+            <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+
+        <button class="btn" onclick="UserProfile.saveAndStart()">GUARDAR Y JUGAR</button>
+    </div>
+</div>
+
+
+<!-- ELEMENTOS DEL JUEGO -->
+<button id="btn-sound" class="sound-float" onclick="AudioSys.toggleSound()">🔊</button>
+
+<div id="view-menu" class="view active">
+    <header>
+        <button class="btn-icon" style="background:#fff3cd; color:#d35400; border:1px solid #ffeaa7;" onclick="Leaderboard.open()">🏆</button>
+        <h1 style="font-size:1.2rem;">SOPA PRO REVOLUTION</h1>
+        <div style="width:45px"></div>
+    </header>
+    <div class="scroll-y">
+        <div id="cat-grid" class="cat-grid"></div>
+    </div>
+</div>
+
+<div id="view-levels" class="view">
+    <header>
+        <button class="btn-icon" onclick="app.nav('view-menu')">←</button>
+        <h1 id="lvl-title">...</h1>
+        <div style="width:45px"></div>
+    </header>
+    <div class="scroll-y">
+        <div id="lvl-grid" class="lvl-grid"></div>
+    </div>
+</div>
+
+<div id="view-game" class="view">
+    <header>
+        <button class="btn-icon" onclick="app.nav('view-levels')">✕</button>
+        <h1 id="g-lvl-num">NIVEL 1</h1>
+        <div id="timer-box" class="timer-box">00:00</div>
+    </header>
+    <div class="game-ui">
+        <div class="hud">
+            <span id="obs-badge" class="obs-badge">⚠️</span>
+            <span>Faltan: <b id="left-cnt">0</b></span>
+        </div>
+        <div class="grid-container"><div id="board" class="board"></div></div>
+        <div class="word-panel"><div id="chips" class="chips"></div></div>
+    </div>
+    <div id="toast" class="toast"></div>
+</div>
+
+<!-- MODALS -->
+<div id="modal" class="modal-layer">
+    <div class="modal-box">
+        <div style="font-size:5rem; margin-bottom:10px;">🏆</div>
+        <h2 id="m-title" style="margin:0; color:#333;">¡Victoria!</h2>
+        <div class="stars-cont" id="m-stars"></div>
+        <p style="color:#555; font-size:1.1rem;">Tiempo: <b id="m-time" style="color:var(--primary)">00:00</b></p>
+        <button class="btn" onclick="app.next()">SIGUIENTE NIVEL</button>
+        <button class="btn btn-sec" onclick="app.nav('view-levels')">SALIR AL MAPA</button>
+    </div>
+</div>
+
+<div id="modal-info" class="modal-layer">
+    <div class="modal-box">
+        <div style="font-size:4rem; margin-bottom:10px;">📜</div>
+        <h2 style="margin:0; color:#333;">Nivel <span id="info-lvl"></span></h2>
+        <div class="stars-cont" id="info-stars"></div>
+        <p style="color:#555;">Mejor Tiempo: <b id="info-time" style="color:var(--secondary)">--:--</b></p>
+        <button class="btn" onclick="app.replayFromInfo()">JUGAR DE NUEVO</button>
+        <button class="btn btn-sec" onclick="document.getElementById('modal-info').style.display='none'">CERRAR</button>
+    </div>
+</div>
+
+<div id="modal-ranking" class="modal-layer" style="align-items: flex-end;">
+    <div class="modal-box rank-box">
+        <div class="rank-header">
+            <h2 style="margin:0; color:var(--text-main);">CLASIFICACIÓN</h2>
+            <button class="btn-icon" onclick="document.getElementById('modal-ranking').style.display='none'" style="width:35px; height:35px; background:transparent;">✕</button>
+        </div>
+        <div class="rank-stats">
+            <div>Total Jugadores: <b style="color:var(--primary)">248</b></div>
+            <div>Tu Rango: <b id="my-rank-display" style="color:var(--danger)">#--</b></div>
+        </div>
+        <div class="rank-list scroll-y" id="rank-list"></div>
+        <button class="btn" onclick="document.getElementById('modal-ranking').style.display='none'" style="margin-top:10px; padding:12px;">VOLVER A COMPETIR</button>
+    </div>
+</div>
+
+<script>
+    const AudioSys = {
+        ctx: null, muted: JSON.parse(localStorage.getItem('sl_v14_mute') || 'false'),
+        init() { if(!this.ctx) this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.updateBtn(); },
+        toggleSound() { this.muted = !this.muted; localStorage.setItem('sl_v14_mute', this.muted); this.updateBtn(); if(!this.muted) this.click(); },
+        updateBtn() { const btn = document.getElementById('btn-sound'); if(btn) { btn.innerText = this.muted ? '🔇' : '🔊'; btn.classList.toggle('muted', this.muted); } },
+        playTone(freq, type, dur, vol=0.1) { if(this.muted) return; if(!this.ctx) this.init(); try { const o = this.ctx.createOscillator(); const g = this.ctx.createGain(); o.type = type; o.frequency.setValueAtTime(freq, this.ctx.currentTime); g.gain.setValueAtTime(vol, this.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+dur); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+dur); } catch(e){} },
+        click() { this.playTone(600, 'sine', 0.1, 0.05); },
+        found() { this.playTone(523.25,'sine',0.1,0.1); setTimeout(()=>this.playTone(659.25,'sine',0.15,0.1),100); },
+        error() { this.playTone(150,'sawtooth',0.3,0.1); },
+        win() { if(this.muted) return; const m = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50]; m.forEach((f,i) => setTimeout(() => this.playTone(f, 'square', i===m.length-1?0.6:0.15, 0.1), i*120)); },
+        tickTock() { if(this.muted) return; this.playTone(800, 'triangle', 0.05, 0.05); setTimeout(()=>this.playTone(600, 'triangle', 0.05, 0.05), 500); }
+    };
+
+    // --- USER PROFILE LOGIC ---
+    const UserProfile = {
+        data: null,
+        selectedEmoji: "😎",
+        emojis: ["😎","🦄","🤖","👽","🐶","🐱","🦊","🦁","🐸","🐼","🐯","🐲","👻","💀","🎃","💩","🤡","🤠","🥳","🥶"],
+        
+        init() {
+            const saved = localStorage.getItem('sl_user_data');
+            if(saved) {
+                this.data = JSON.parse(saved);
+            } else {
+                this.renderEmojiGrid();
+            }
+        },
+
+        renderEmojiGrid() {
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            this.emojis.forEach(e => {
+                const d = document.createElement('div');
+                d.className = `emoji-opt ${e===this.selectedEmoji?'selected':''}`;
+                d.innerText = e;
+                d.onclick = () => {
+                    AudioSys.click();
+                    this.selectedEmoji = e;
+                    document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
+                    d.classList.add('selected');
+                };
+                grid.appendChild(d);
+            });
+        },
+
+        saveAndStart() {
+            const nameInput = document.getElementById('input-name').value.trim();
+            const countryInput = document.getElementById('input-country').value;
+            
+            if(nameInput.length < 2) {
+                alert("Por favor, escribe un nombre.");
+                return;
+            }
+
+            this.data = {
+                name: nameInput,
+                avatar: this.selectedEmoji,
+                country: countryInput
+            };
+            localStorage.setItem('sl_user_data', JSON.stringify(this.data));
+            
+            // Cerrar modal y empezar
+            document.getElementById('modal-setup').style.display = 'none';
+            AudioSys.win(); // Sonido de éxito
+        }
+    };
+
+        const RAW_DB = {
+        "Animales": "PERRO GATO LEON TIGRE OSO LOBO ELEFANTE JIRAFA CEBRA MONO PANDA KOALA CANGURO AGUILA BUHO DELFIN BALLENA TIBURON PULPO TORTUGA CABALLO VACA CERDO OVEJA CABRA PATO PAVO CONEJO ZORRO CIERVO ALCE CAMELLO LLAMA PINGUINO FOCA ORNITORRINCO HIPOPOTAMO RINOCERONTE LEOPARDO GUEPARDO HIENA SURICATA LEMUR MAPACHE ERIZO ARDILLA CASTOR NUTRIA HURON HAMSTER COBAYA CHINCHILLA PEREZOSO HORMIGUERO ARMADILLO TAPIR JABALI BUFALO YAK ANTILOPE GACELA GNU IMPALA OKAPI DROMEDARIO VICUÑA ALPACA GUANACO MURCIELAGO TOPO MUSARAÑA ORCA CACHALOTE NARVAL BELUGA MANATI MUK MANTARRAYA ANGUILA BARRACUDA ATUN SALMON TRUCHA ESTURION PEZESPADA PIRANHA MEDUSA CALAMAR SEPIA LANGOSTA CANGREJO CAMARON OSTRA ALMEJA MEJILLON CARACOL BABOSA LOMBRIZ SANGUIJUELA ABEJA AVISPA HORMIGA TERMITA ESCARABAJO MARIPOSA POLILLA MOSCA MOSQUITO GRILLO SALTAMONTES CUCARACHA MANTIS LIBELULA ARAÑA ESCORPION GARRAPATA CIEMPIES MILPIES RANA SAPO SALAMANDRA TRITON COCODRILO CAIMAN GAVIAL TORTUGA IGUANA CAMALEON GECKO VARANO COBRA VIPERA PITON ANACONDA BOA CASCABEL CORAL AVESTRUZ EMU CASUARIO ÑANDU KIWI CONDOR BUITRE HALCON GAVILAN AZOR CERNICALO LECHUZA CARABO CUERVO URRACA GRAJILLA",
+        "Colores": "ROJO AZUL VERDE AMARILLO NARANJA VIOLETA ROSA GRIS NEGRO BLANCO MARRON BEIGE TURQUESA CIAN MAGENTA LILA OCRE CORAL SALMON FUCSIA INDIGO DORADO PLATA BRONCE MOSTAZA OLIVA MENTA CELESTE MARFIL LAVANDA PURPURA VINO CARMESI ESCARLATA BERMEJO GRANATE TEJA CALDERO AMBAR CAOBA SIENA SEPIA HABANO CHOCOLATE CAFE ARENA CREMA VAINILLA HUESO CENIZA PLOMO ANTRACITA AZABACHE NOCHE PETROLEO ULTRAMAR COBALTO ZAFIRO AÑIL PRUSIA ELECTRICO CIELO ACQUA ESMERALDA JADE PISTACHO LIMA MUSGO PINO BOSQUE MANZANA OLIVO KAKI CHARTREUSE AMATISTA MALVA VIOLETA BERENJENA OBISPO CIRUELA MORADO CARDENAL ROSA PALO CHICLE FLAMENCO MAQUILLAJE MELOCOTON ALBARICOQUE MANDARINA ZANAHORIA CALABAZA ORO RUBIO PLATINO COBRE LATON HIERRO OXIDO TITANIO NIQUEL ZINC ACERO ALUMINIO PERLA NACAR OPALO DIAMANTE RUBI TOPACIO FLUOR NEON PASTEL MATE BRILLANTE CLARO OSCURO INTENSO PALIDO APAGADO VIVO NEUTRO FRIO CALIDO METALICO TRANSPARENTE INVISIBLE ARCOIRIS",
+        "Paises": "MEXICO ESPAÑA COLOMBIA ARGENTINA PERU CHILE BRASIL FRANCIA ITALIA ALEMANIA JAPON CHINA INDIA RUSIA CANADA USA INGLATERRA SUECIA SUIZA NORUEGA POLONIA GRECIA TURQUIA EGIPTO AUSTRALIA COREA VIETNAM CUBA PANAMA ECUADOR URUGUAY PARAGUAY BOLIVIA VENEZUELA GUATEMALA HONDURAS SALVADOR NICARAGUA COSTARICA DOMINICANA HAITI JAMAICA BAHAMAS PUERTORICO BELICE GUYANA SURINAM PORTUGAL IRLANDA ESCOCIA GALES BELGICA HOLANDA DINAMARCA FINLANDIA ISLANDIA AUSTRIA HUNGRIA CHEQUIA ESLOVAQUIA ESLOVENIA CROACIA SERBIA BOSNIA MONTENEGRO ALBANIA MACEDONIA BULGARIA RUMANIA UCRANIA BIELORRUSIA ESTONIA LETONIA LITUANIA MOLDAVIA GEORGIA ARMENIA AZERBAIYAN KAZAJISTAN UZBEKISTAN KIRGUISTAN TAYIKISTAN TURKMENISTAN AFGANISTAN PAKISTAN IRAN IRAK SIRIA LIBANO ISRAEL JORDANIA ARABIA YEMEN OMAN EMIRATOS QATAR BAHREIN KUWAIT MONGOLIA TAILANDIA LAOS CAMBOYA BIRMANIA MALASIA SINGAPUR INDONESIA FILIPINAS TIMOR BRUNEI BANGLADESH NEPAL BUTAN MALDIVAS SRI LANKA MARRUECOS ARGELIA TUNEZ LIBIA SUDAN ETIOPIA SOMALIA KENIA TANZANIA UGANDA RUANDA BURUNDI CONGO GABON CAMERUN NIGERIA GHANA SENEGAL MALI MAURITANIA MADAGASCAR SUDAFRICA NAMIBIA BOTSUANA ZIMBABUE ZAMBIA MOZAMBIQUE ANGOLA NUEVAZELANDA FIJI SAMOA TONGA",
+        "Frutas": "MANZANA PERA PLATANO UVA NARANJA LIMON FRESA CEREZA SANDIA MELON PIÑA COCO MANGO PAPAYA KIWI CIRUELA HIGO GRANADA FRAMBUESA MORA ARANDANO GUAYABA LULO POMELO MANDARINA LITCHI ALBARICOQUE MELOCOTON DURAZNO NECTARINA PARAGUAYA NISPERO CAQUI CHIRIMOYA GUANABANA MEMBRILLO DATIL MARACUYA PASION FRUTABOMBA TAMARINDO CARAMBOLA PHYSALIS PITAHAYA DRAGON MANGOSTAN RAMBUTAN DURIAN JACKFRUIT KUMQUAT LIMA CIDRA BERGAMOTA TORONJA CLEMENTINA SATSUMA TANGERINA GROSELLA ZARZAMORA ENDRINA SAUCO ACEROLA GOJI ACAI MAQUI AGUACATE TOMATE PEPINO CALABAZA BERENJENA PIMIENTO ACEITUNA ALCAPARRA ANACARDO ALMENDRA NUEZ AVELLANA PISTACHO CASTAÑA PIÑON CACAHUETE MACADAMIA PECANA COQUITO DATILUVA PASA OREJON CIRUELA CHABACANO ARANDANOROJO ARANDANOAZUL MURTA MORTIÑO CALAFATE JOJOBA NONI UCHUVA ZAPOTE MAMEY BOROJO CURUBA GRANADILLA TOMATEARBOL BABACO PEPINODULCE NARANJILLA COCONA CAMUCAMU AGUAJE CUPUACU GUARANA JABOTICABA ACEROLA PITANGA",
+        "Cuerpo": "CABEZA OJOS NARIZ BOCA OREJA PELO CUELLO BRAZO CODO MANO DEDO PECHO ESPALDA BARRIGA PIERNA RODILLA PIE DIENTE LENGUA LABIO UÑA PIEL HUESO SANGRE CORAZON PULMON ESTOMAGO CEREBRO MUSCULO HIGADO RIÑON INTESTINO PANCREAS BAZO VEJIGA UTERO OVARIO PROSTATA TESTICULO PENE VAGINA CLITORIS ANO RECTO COLON DUODENO YEYUNO ILEON ESOFAGO TRAQUEA LARINGE FARINGE BRONQUIO ALVEOLO DIAFRAGMA COSTILLA ESTERNON CLAVICULA OMOPLATO HUMERO RADIO CUBITO CARPO METACARPO FALANGE FEMUR ROTULA TIBIA PERONE TARSO METATARSO CRANEO MANDIBULA MAXILAR VERTEBRA PELVIS SACRO COCCIX ARTICULACION LIGAMENTO TENDON CARTILAGO MENISCO DISCO MEDULA NEURONA NERVIO GANGLIO VASO ARTERIA VENA CAPILAR PLASMA GLOBULO PLAQUETA LINFA HORMONA GLANDULA SUDOR SALIVA LAGRIMA MOCO ORINA HECES BILIS ACIDO ENZIMA CELULA TEJIDO ORGANO SISTEMA APARATO SENTIDO VISTA OIDO OLFATO GUSTO TACTO EQUILIBRIO MENTE ALMA ESPIRITU CONCIENCIA MEMORIA",
+        "Casa": "SALA COCINA BAÑO DORMITORIO JARDIN PATIO TECHO PUERTA VENTANA PARED SUELO MESA SILLA SOFA CAMA ARMARIO ESPEJO LAMPARA ALFOMBRA CORTINA CUADRO RELOJ TELEVISOR LLAVE GRIFO DUCHA TOALLA JABON CEPILLO PASTA PEINE CHAMPU ESPONJA PAPEL WC LAVABO INODORO BIDET BAÑERA MAMPARA TOALLERO ESTANTE REPISA CAJON COMODA MESITA ESCRITORIO SILLON BUTACA PUFF COJIN MANTA SABANA EDREDON COLCHON ALMOHADA FUNDA PERCHA ROPERO VESTIDOR ZAPATERO RECIBIDOR PASILLO ESCALERA BARANDILLA ATICO SOTANO GARAJE TRASTERO DESPENSA LAVADERO TENDEDERO PLANCHA TABLA LAVADORA SECADORA NEVERA CONGELADOR HORNO MICROONDAS VITROCERAMICA CAMPANA FREGADERO LAVAVAJILLAS TOSTADORA BATIDORA CAFETERA EXPRIMIDOR OLLA SARTEN CAZO CACEROLA FUENTE PLATO VASO TAZA COPA CUBIERTO TENEDOR CUCHILLO CUCHARA SERVILLETA MANTEL BOTELLA JARRA TAPER TUWER BASURA ESCOBA FREGONA CUBO TRAPO GAMUZA ASPIRADORA PLUMERO RADIADOR AIRE VENTILADOR ENCHUFE INTERRUPTOR BOMBILLA CABLE REGLETA ALARMA TIMBRE BUZON FELPUDO MACETA",
+        "Escuela": "LAPIZ GOMA PLUMA REGLA CUADERNO LIBRO MOCHILA PIZARRA TIZA SILLA MAPA GLOBO TIJERAS PAPEL CARPETA ESTUCHE AGENDA EXAMEN TAREA MAESTRO ALUMNO CLASE AULA GIMNASIO BIBLIOTECA PATIO UNIFORME DIRECTOR SECRETARIA CONSERJE COMEDOR LABORATORIO ORDENADOR PROYECTOR PANTALLA ROTULADOR BORRADOR SACAPUNTAS COMPAS TRANSPORTADOR ESCUADRA CARTABON CALCULADORA DICCIONARIO ENCICLOPEDIA ATLAS APUNTES NOTAS CALIFICACION BOLETIN BECA MATRICULA CURSO GRADO NIVEL ASIGNATURA MATEMATICAS LENGUA HISTORIA GEOGRAFIA CIENCIAS FISICA QUIMICA BIOLOGIA ARTE MUSICA INGLES IDIOMA DEPORTE EDUCACION RECREO DESCANSO ALMUERZO MERIENDA COMPAÑERO AMIGO GRUPO EQUIPO DELEGADO ASISTENCIA FALTA RETRASO JUSTIFICANTE REUNION TUTORIA EXCURSION VIAJE GRADUACION DIPLOMA TITULO CERTIFICADO PREMIO CONCURSO PROYECTO TRABAJO EXPOSICION ORAL ESCRITO LECTURA ESCRITURA CALIGRAFIA ORTOGRAFIA GRAMATICA VOCABULARIO NUMERO LETRA FRASE TEXTO PARRAFO RESUMEN ESQUEMA MAPAMENTAL SUBRAYADOR PEGAMENTO CELO GRAPADORA CLIPS CHINCHETA",
+        "Comida": "PAN QUESO JAMON HUEVO LECHE YOGUR ARROZ PASTA SOPA ENSALADA CARNE POLLO PESCADO HAMBURGUESA PIZZA SANDWICH TACO SUSHI PAELLA TORTILLA FILETE SALCHICHA PATATA TOMATE CEBOLLA AJO SAL AZUCAR ACEITE VINAGRE PIMIENTA ESPECIAS SALSA KETCHUP MAYONESA MOSTAZA MANTEQUILLA MERMELADA MIEL CEREALES GALLETAS TOSTADA BOLLO CRUASAN MAGDALENA BIZCOCHO TARTA PASTEL HELADO CHOCOLATE BOMBON CARAMELO CHUCHERIA FRUTA VERDURA LEGUMBRE LENTEJA GARBANZO JUDIA GUISANTE HABA MAIZ TRIGO AVENA CENTENO CEBADA QUINOA SOJA TOFU SEITAN TEMPEH MARISCO GAMBA LANGOSTINO CIGALA BOGAVANTE CANGREJO BUEY CENTOLLO NECORA PERCEBE OSTRA ALMEJA CHIRLA BERBERECHO MEJILLON VIEIRA ZAMBURIÑA PULPO CALAMAR SEPIA CHIPIRON PESCADILLA MERLUZA BACALAO SALMON TRUCHA ATUN BONITO CABALLA SARDINA BOQUERON ANCHOA LENGUADO RODABALLO GALLO RAPE MERO LUBINA DORADA BESUGO CHULETA ENTRECOT SOLOMILLO LOMO COSTILLA PANCETA TOCINO CHORIZO SALCHICHON LONGANIZA MORCILLA SOBRASADA PATE FOIE BRAVAS CROQUETA EMPANADILLA",
+        "Ropa": "CAMISA PANTALON FALDA VESTIDO ABRIGO CHAQUETA JERSEY SUETER TRAJE CORBATA ZAPATO BOTA SANDALIA CALCETIN GUANTE BUFANDA GORRO SOMBRERO CINTURON BOLSO MOCHILA PIJAMA BAÑADOR GAFAS JOYAS ANILLO PENDIENTE COLLAR PULSERA RELOJ BROCHE DIADEMA TOCADO PAMELA BOINA GORRA VISERA CASCO CHALECO GABARDINA IMPERMEABLE CHUBASQUERO ANORAK PARKA BLAZER AMERICANA ESMOQUIN FRAC CHAQUE CHANDAL SUDADERA MALLAS LEGGINGS MEDIAS LIGAS LENCERIA BRAGAS TANGA CULOTTE BOXER SLIP CALZONCILLO CAMISETA TOP BLUSA TUNICA KAFTAN KIMONO SARI PONCHO CAPA CHAL ESTOLA PAÑUELO BANDANA PAJARITA TIRANTES GEMELOS BOTON CREMALLERA VELCRO CORDON SUELA TACON CUÑA PLATAFORMA MOCASIN NAUTICO DEPORTIVA TENIS SNEAKER ALPARGATA CHANCLA ZUECO PANTUFLA BOTIN CAMISON BATA ALBORNOZ UNIFORME DISFRAZ DELANTAL MONO PETO BERMUDAS SHORTS VAQUERO JEANS PANA LINO SEDA LANA ALGODON CUERO PIEL TERCIOPELO ENCAJE TUL RASO",
+        "Deportes": "FUTBOL BASKET TENIS VOLEIBOL BEISBOL GOLF RUGBY HOCKEY NATACION CICLISMO BOXEO JUDO KARATE ESQUI SURF VELA REMO ESCALADA GIMNASIA BAILE PATINAJE ESGRIMA TIRO ARCO EQUITACION CRICKET PINGPONG BADMINTON PADEL SQUASH RACQUETBOL HANDBOL WATERPOLO BALONMANO FUTSAL SOFTBOL LACROSSE CURLING BOBSLEIGH TRINEO SKELETON SNOWBOARD SKATE PARKOUR BMX MOTOCROSS RALLY FORMULA1 KARTING AUTOMOVILISMO MOTOCICLISMO TRIATLON DUATLON MARATON ATLETISMO CARRERA SALTO LANZAMIENTO JABALINA DISCO MARTILLO PESO PERTIGA LONGITUD ALTURA VALLAS OBSTACULOS MARCHA CROSS TRAIL SENDERISMO MONTAÑISMO ALPINISMO RAPEL BARRANQUISMO RAFTING KAYAK PIRAGUISMO CANOTAJE SUBMARINISMO BUCEO SNORKEL APNEA PESCA CAZA TIROOLIMPICO HALTEROFILIA CULTURISMO FITNESS CROSSFIT YOGA PILATES ZUMBA AEROBIC SPINNING TAIJI KUNGFU TAEKWONDO AIKIDO JIUJITSU LUCHA LIBRE GRECORROMANA SUMO CAPOEIRA KICKBOXING MUAYTHAI MMA ESGRIMA AJEDREZ DARDOS BILLAR BOLOS PETANCA",
+        "Profesiones": "MEDICO MAESTRO INGENIERO ABOGADO POLICIA BOMBERO JUEZ PILOTO COCINERO ACTOR CANTANTE PINTOR ESCRITOR PERIODISTA FOTOGRAFO ARQUITECTO ALBAÑIL CARPINTERO MECANICO AGRICULTOR PESCADOR DENTISTA CIENTIFICO ENFERMERO VETERINARIO PSICOLOGO PSIQUIATRA FARMACEUTICO BIOLOGO QUIMICO FISICO MATEMATICO ASTRONOMO GEOLOGO HISTORIADOR ARQUEOLOGO FILOSOFO SOCIOLOGO POLITICO DIPLOMATICO ECONOMISTA CONTABLE AUDITOR BANQUERO EMPRESARIO DIRECTOR GERENTE ADMINISTRATIVO SECRETARIO RECEPCIONISTA TELEFONISTA VENDEDOR COMERCIAL DEPENDIENTE CAJERO REPARTIDOR MENSAJERO CONDUCTOR CHOFER TAXISTA CAMIONERO MAQUINISTA CAPITAN MARINERO AZAFATA MAYORDOMO LIMPIADOR BASURERO JARDINERO FLORISTA PELUQUERO BARBERO ESTETICISTA MAQUILLADOR MODISTO SASTRE DISEÑADOR MODELO MUSICO COMPOSITOR DIRECTOR CINEASTA GUIONISTA PRODUCTOR EDITOR PUBLICISTA TRADUCTOR INTERPRETE GUIA TURISTICO AGENTE DETECTIVE ESPIA MILITAR SOLDADO GENERAL SACERDOTE MONJE MONJA PAPA OBISPO RABINO IMAN PASTOR ELECTRICISTA FONTANERO PINTOR SOLDADOR HERRERO MINERO OBRERO",
+        "Verbos": "CORRER SALTAR COMER BEBER DORMIR SOÑAR LEER ESCRIBIR HABLAR MIRAR VER TOCAR OLER PENSAR ESTUDIAR TRABAJAR JUGAR REIR LLORAR CANTAR BAILAR AMAR QUERER PODER TENER HACER IR VENIR DAR SALIR ENTRAR ABRIR CERRAR SUBIR BAJAR CAMINAR ANDAR PASEAR VIAJAR VOLAR NADAR BUCEAR FLOTAR HUNDIR CAER LEVANTAR SENTAR TUMBAR ACOSTAR DESPERTAR VESTIR DESNUDAR LAVAR LIMPIAR MANCHAR ENSUCIAR COCINAR FREIR COCER ASAR HORNEAR CORTAR PELAR BATIR MEZCLAR AMASAR SERVIR COMPRAR VENDER PAGAR COBRAR GASTAR AHORRAR PRESTAR DEBER REGALAR ROBAR ROMPER ARREGLAR CONSTRUIR DESTRUIR CREAR INVENTAR DESCUBRIR BUSCAR ENCONTRAR PERDER GANAR EMPATAR COMPETIR LUCHAR PELEAR DISCUTIR GRITAR SUSURRAR CALLAR ESCUCHAR OIR ENTENDER COMPRENDER SABER CONOCER IGNORAR OLVIDAR RECORDAR MEMORIZAR APRENDER ENSEÑAR EDUCAR EXPLICAR PREGUNTAR RESPONDER PEDIR OFRECER RECIBIR ACEPTAR RECHAZAR ELEGIR DECIDIR CAMBIAR MEJORAR EMPEORAR AYUDAR APOYAR PROTEGER CUIDAR CURAR SANAR ENFERMAR MORIR MATAR VIVIR NACER CRECER",
+        "Transporte": "COCHE MOTO BICI AUTOBUS TREN METRO AVION BARCO CAMION TAXI SUBMARINO COHETE GLOBO PATINETE TRINEO VELERO YATE CRUCERO LANCHA FERRY AVIONETA ZEPPELIN HELICOPTERO TRANVIA TROLEBUS FUNICULAR TELEFERICO ASCENSOR ESCALERA MONOPATIN SEGWAY HOVERBOARD CUATRIMOTO MOTOACUATICA PIRAGUA CANOA KAYAK BALSA GONDOLA CATAMARAN TRANSATLANTICO PORTAAVIONES DESTRUCTOR FRAGATA ACORAZADO PETROLERO CARGUERO PESQUERO REMOLCADOR ROMPEHIELOS DRAGA BATISCAFO TRANSBORDADOR ORBITADOR SATELITE SONDA ROVER MODULO CAPSULA CAZA BOMBARDERO DRON PLANEADOR PARAPENTE PARACAIDAS ALA DELTA ULM AUTOGIRO DIRIGIBLE AERNOSTATO CARRO CARRETA CALESA DILIGENCIA CARRUAJE COCHE DE CABALLOS RICKSHAW TUKTUK FURGONETA CAMIONETA PICKUP TODOTERRENO SUV LIMUSINA DESCAPOTABLE DEPORTIVO SEDAN BERLINA FAMILIAR COUPE ROADSTER HATCHBACK MONOVOLUMEN AUTOCARAVANA CAMPER TRAILER CISTERNA HORMIGONERA GRUA EXCAVADORA TRACTOR COSECHADORA APISONADORA AMBULANCIA PATRULLA BOMBEROS",
+        "Sentimientos": "ALEGRIA TRISTEZA MIEDO IRA SORPRESA ASCO AMOR ODIO ENVIDIA CELOS ORGULLO CULPA ESPERANZA ILUSION DESEO PASION TERNURA CARIÑO DOLOR PLACER DIVERSION DUDA CONFIANZA GRATITUD RESPETO ADMIRACION DESPRECIO INDIFERENCIA APATIA ABURRIMIENTO CANSANCIO FATIGA ESTRES ANSIEDAD ANGUSTIA PANICO TERROR HORROR ESPANTO SUSTO CALMA PAZ TRANQUILIDAD SERENIDAD RELAX ALIVIO CONSUELO SATISFACCION FELICIDAD DICHA GOZO EUFORIA ENTUSIASMO EXCITACION NERVIOSISMO INQUIETUD PREOCUPACION AGOBIO MOLESTIA ENFADO RABIA FURIA COLERA RENCOR VENGANZA REMORDIMIENTO ARREPENTIMIENTO VERGUENZA TIMIDEZ SOLEDAD NOSTALGIA MELANCOLIA DEPRESION DESOLACION DESESPERACION IMPOTENCIA FRUSTRACION DECEPCION DESILUSION RESIGNACION ACEPTACION COMPASION PIEDAD LASTIMA EMPATIA SIMPATIA ANTIPATIA AMISTAD ENEMISTAD HOSTILIDAD AGRESIVIDAD VIOLENCIA BONDAD MALDAD GENEROSIDAD EGOISMO AVARICIA CODICIA LUJURIA GULA SOBERBIA PEREZA VALENTIA COBARDIA AUDACIA PRUDENCIA PACIENCIA TOLERANCIA CURIOSIDAD INTERES FASCINACION",
+        "Naturaleza": "SOL LUNA ESTRELLA CIELO NUBE LLUVIA NIEVE VIENTO TORMENTA RAYO MONTAÑA RIO LAGO MAR PLAYA ISLA DESIERTO BOSQUE SELVA ARBOL FLOR PLANTA PIEDRA TIERRA FUEGO AGUA AIRE ANIMAL VIDA MUERTE DIA NOCHE LUZ SOMBRA OSCURIDAD CALOR FRIO HIELO ESCARCHA ROCIO NIEBLA BRUMA VAPOR HUMEDAD SEQUIA INUNDACION TERREMOTO VOLCAN ERUPCION LAVA CENIZA MAGMA CRATER GEYSER AGUASTERMALES CASCADA CATARATA SALTO TORRENTE ARROYO MANANTIAL POZO OLEADA MAREA OLA ESPUMA RESACA CORRIENTE REMOLINO CICLON HURACAN TIFON TORNADO TROMBA VENDAVAL BRISA CALIMA ARCOIRIS AURORA BOREAL AUSTRAL OESTE ESTE NORTE SUR ORIENTE OCCIDENTE POLO ECUADOR TROPICO MERIDIANO PARALELO CONTINENTE OCEANO PENINSULA CABO GOLFO BAHIA ENSENADA CALA RÍA ESTUARIO DELTA PANTANO CIENAGA MARISMA MANGLAR ARRECIFE CORAL ATOLON ARCHIPIELAGO LLANURA PRADERA ESTEPA SABANA TUNDRA TAIGA JUNGLA MONTE CERRO COLINA VALLE CAÑON BARRANCO ACANTILADO CUEVA GRUTA CAVERNA SIMA",
+        "Espacio": "UNIVERSO GALAXIA SISTEMA PLANETA TIERRA MARTE JUPITER SATURNO URANO NEPTUNO MERCURIO VENUS SOL LUNA ESTRELLA COMETA ASTEROIDE METEORITO ORBITA GRAVEDAD VACIO ASTRONAUTA COHETE SATELITE TELESCOPIO OVNI ALIENIGENA EXTRATERRESTRE COSMOS ESPACIO TIEMPO DIMENSION AGUJERO NEGRO GUSANO BLANCO SUPERNOVA NEBULOSA PULSAR QUASAR MAGNETAR ENANA BLANCA ROJA MARRON GIGANTE ROJA AZUL SUPERGIGANTE HIPERGIGANTE CUMULO GALACTICO MATERIA OSCURA ENERGIA OSCURA BIGBANG EXPANSION INFLACION RADIACION FONDO COSMICO RAYOS GAMMA X ULTRAVIOLETA INFRARROJO MICROONDAS ONDAS GRAVITACIONALES CONSTELACION ZODIACO OSA MAYOR MENOR ORION CASIOPEA ANDROMEDA VIA LACTEA NUBES MAGALLANES CENTAURO SIRIO CANOPUS ARTURO VEGA CAPELLA RIGEL PROCION BETELGEUSE ALTAIR ALDEBARAN ANTARES ESPIGA POLLUX DENEB FOMALHAUT ESTACION ESPACIAL INTERNACIONAL MIR SKYLAB APOLO SOYUZ SPUTNIK VOYAGER PIONEER CURIOSITY PERSEVERANCE HUBBLE WEBB CHANDRA SPITZER KEPLER TESS SETI NASA ESA ROSCOSMOS SPACEX BLUE ORIGIN VIRGIN ORBITA GEOESTACIONARIA BAJA MEDIA POLAR ELIPTICA PARABOLICA HIPERBOLICA VELOCIDAD LUZ AÑOLUZ PARSEC UNIDAD ASTRONOMICA",
+        "Instrumentos": "PIANO GUITARRA VIOLIN FLAUTA TROMPETA TAMBOR BATERIA SAXOFON ARPA BAJO OBOE TROMBON TUBA ACORDEON ORGANO XILOFONO MARIMBA TIMBALES CONGAS BONGOS MARACAS CLARINETE FAGOT CONTRABAJO VIOLA VIOLONCHELO UKELELE BANJO MANDOLINA LAUD SITAR BALALAIKA BOUZOUKI CHARANGO CUATRO TIPLE GUITARRON VIHUELA BANDURRIA CITALA KOTO SHAMISEN BIWA PIPA GUZHENG ERHU DIDGERIDOO YEMBE DARBUKA CAJON PALMAS CASTAÑUELAS PANDERETA TRIANGULO PLATILLOS GONGS CAMPANA CENCERRO VIBRAFONO GLOCKENSPIEL CELESTA CLAVECIN ESPINETA ARMONICA MELODICA OCARINA GAITA ZAMPOÑA QUENA SIKU RONDADOR FLAUTIN PICCOLO CORNO INGLES TROMPA BOMBARDINO SOUSAFON HELICON CORNETA FLISCORNO SINTETIZADOR TECLADO SAMPLER CAJA RITMOS TOCADISCOS MESA MEZCLAS MICROFONO AMPLIFICADOR ALTAVOZ PEDAL PUA ARCO BAQUETA MAZA SORDINA ATRILL PARTITURA DIAPASON METRONOMO AFINADOR CUERDA VIENTO PERCUSION METAL MADERA ELECTRICO ACUSTICO DIGITAL ANALOGICO",
+        "Herramientas": "MARTILLO LLAVE SIERRA TALADRO LIJA CLAVO TORNILLO TUERCA CINTA METRO NIVEL LIMA PALA HACHA PICO TIJERAS BROCA YUNQUE LINTERNA ESCALERA CARRETILLA DESTORNILLADOR ALICATES TENAZAS PINZAS SARGENTO PRENSA TORNILLOBANCO MAZO COMBA CEPILLO FORMON GUBIA ESCOFINA PUNZON BOTADOR GRANETE CINCEL CORTAFRIO ESPATULA LLANA PALETA RASTRILLO AZADA GUADAÑA HOZ PODADERA TIJERAS PODA MOTOSIERRA DESBROZADORA CORTACESPED SOPLADORA HIDROLIMPIADORA COMPRESOR GENERADOR SOLDADOR SOPLETE PISTOLA SILICONA COLA PEGAMENTO GRAPADORA REMACHADORA CORTATUBOS ABOCARDADOR CURVATUBOS LLAVE INGLESA GRIFA CARRACA VASO ALLEN TORX PLANA ESTRELLA FIJA TUBO ACODADA DINAMOMETRICA CALIBRE PIE REY MICROMETRO COMPARADOR GALGAS ESCUADRA CARTABON REGLA COMPAS TRAZADOR TIZA LAPIZ NIVEL LASER PLOMADA CORDEL CINTA AISLANTE AMERICANA TEFLON BRIDA ALAMBRE CUERDA CADENA CANDADO CERROJO BISAGRA POMO MANILLA ESCALERA ANDAMIO CABALLETE GATO HIDRAULICO ELEVADOR POLIPASTO GRUA",
+        "Tecnologia": "ORDENADOR TABLET MOVIL TELEFONO RELOJ CAMARA TV PANTALLA TECLADO RATON IMPRESORA ALTAVOZ CABLE BATERIA CARGADOR WIFI INTERNET RED APP JUEGO VIDEO FOTO CODIGO CHIP ROBOT IA DRON SMARTPHONE LAPTOP NOTEBOOK DESKTOP SERVIDOR CLOUD NUBE DATOS DATABASE SQL PYTHON JAVA HTML CSS JAVASCRIPT REACT ANGULAR VUE NODE PHP RUBY SWIFT KOTLIN FLUTTER ANDROID IOS WINDOWS LINUX MACOS UNIX DOS BIOS CPU GPU RAM ROM SSD HDD USB HDMI VGA DVI ETHERNET BLUETOOTH NFC GPS 5G 4G 3G LTE FIBRA ADSL MODEM ROUTER SWITCH HUB FIREWALL ANTIVIRUS MALWARE VIRUS TROYANO SPYWARE RANSOMWARE HACKER CRACKER PHISHING SPAM CORREO CHAT REDSOCIAL FACEBOOK INSTAGRAM TIKTOK TWITTER YOUTUBE WHATSAPP TELEGRAM LINKEDIN GOOGLE AMAZON MICROSOFT APPLE NETFLIX SPOTIFY TWITCH STEAM DISCORD ZOOM MEET TEAMS SKYPE VR AR MR BLOCKCHAIN BITCOIN CRYPTO NFT METAVERSO AUTOMATIZACION DOMOTICA IOT WEARABLE GADGET DEVICE HARDWARE SOFTWARE FIRMWARE ALGORITMO",
+        "Materiales": "MADERA METAL HIERRO ACERO COBRE ORO PLATA BRONCE PLASTICO VIDRIO CRISTAL PAPEL CARTON TELA LANA ALGODON SEDA CUERO PIEL GOMA PIEDRA MARMOL CEMENTO ARENA ARCILLA CERAMICA BARRO LADRILLO YESO CAL ESTUCO HORMIGON GRANITO PIZARRA CUARZO ARENISCA CALIZA BASALTO OBSIDIANA PEDERNAL SILICE MICA TALCO GRAFITO CARBON DIAMANTE RUBI ZAFIRO ESMERALDA TOPACIO AMATISTA PERLA NACAR CORAL MARFIL HUESO CUERNO CONCHA CAREY AMBAR RESINA CAUCHO LATEX SILICONA NYLON POLIESTER ACRILICO LICRA SPANDEX ELASTANO RAYON VISCOSA ACETATO TERCIOPELO PANA JEANS DENIM LINO CAÑAMO YUTE MIMBRE RATAN BAMBU CORCHO FIELTRO PAÑOLENCI GOMA EVA POREXPAN CORCHOPAN POLIURETANO PVC PET PEAD PEBD PP PS ABS TEFLON KEVLAR FIBRA CARBONO VIDRIO TITANIO ALUMINIO MAGNESIO NIQUEL CROMO ZINC ESTAÑO PLOMO MERCURIO TUNGSTENO WOLFRAMIO URANIO PLUTONIO",
+        "Geometria": "PUNTO LINEA RECTA CURVA ANGULO TRIANGULO CUADRADO RECTANGULO ROMBO PENTAGONO HEXAGONO CIRCULO OVALO ESFERA CUBO PRISMA PIRAMIDE CILINDRO CONO AREA VOLUMEN DIAMETRO RADIO CENTRO LADO CARA BASE VERTICE ARISTA DIAGONAL PERIMETRO SUPERFICIE ALTURA ANCHURA LONGITUD PROFUNDIDAD ESPESOR MEDIDA DIMENSION COORDENADA EJE PLANO ESPACIO VECTOR MATRIZ TEOREMA AXIOMA POSTULADO HIPOTESIS DEMOSTRACION LOGICA RAZON PROPORCION ESCALA SIMETRIA ASIMETRIA ROTACION TRASLACION REFLEXION HOMOTECIA PROYECCION PERSPECTIVA PARALELA PERPENDICULAR SECANTE TANGENTE COINCIDENTE COPLANARIO COLINEAL CONCENTRICO EXCENTRICO INSCRITO CIRCUNSCRITO REGULAR IRREGULAR CONVEXO CONCAVO POLIGONO POLIEDRO TETRAEDRO OCTAEDRO DODECAEDRO ICOSAEDRO TRAPECIO TRAPEZOIDE ROMBOIDE ELIPSE PARABOLA HIPERBOLA CATENARIA ESPIRAL HELICE FRACTAL TESELA MOSAICO GRADO RADIAN PI INFINITO LIMITE DERIVADA INTEGRAL CALCULO TRIGONOMETRIA SENO COSENO TANGENTE COTANGENTE SECANTE COSECANTE",
+        "Tiempo": "SEGUNDO MINUTO HORA DIA SEMANA MES AÑO SIGLO AYER HOY MAÑANA LUNES MARTES MIERCOLES JUEVES VIERNES SABADO DOMINGO ENERO FEBRERO MARZO ABRIL MAYO JUNIO JULIO AGOSTO SEPTIEMBRE OCTUBRE NOVIEMBRE DICIEMBRE PRIMAVERA VERANO OTOÑO INVIERNO AMANECER MEDIODIA ATARDECER ANOCHECER NOCHE MEDIANOCHE ALBA CREPUSCULO MADRUGADA TEMPRANO TARDE PUNTUAL RETRASO ADELANTO PRESENTE PASADO FUTURO INSTANTE MOMENTO RATO EPOOCA ERA PERIODO ETAPA FASE CICLO LAPSO INTERVALO DURACION ETERNIDAD SIEMPRE NUNCA JAMAS A VECES FRECUENTE RARO OCASIONAL DIARIO SEMANAL MENSUAL ANUAL DECADA LUSTRO MILENIO EON CRONOMETRO RELOJ CALENDARIO FECHA CUMPLEAÑOS ANIVERSARIO FESTIVO LABORABLE VACACIONES FINDE PUENTE ACUEDUCTO HORARIO AGENDA CITA PLAZO TERMINO VENCIMIENTO URGENTE PRISA CALMA ESPERA PACIENCIA TIEMPO CLIMA ESTACION TEMPORADA EFEMERIDE HISTORIA CRONOLOGIA LINEA TIEMPO ANACRONISMO SINCRONIA ASINCRONIA TEMPORIZADOR CUENTA ATRAS RECORD",
+        "Familia": "PADRE MADRE HIJO HIJA HERMANO HERMANA ABUELO ABUELA NIETO NIETA TIO TIA PRIMO SOBRINO SUEGRO NUERA CUÑADO ESPOSO ESPOSA MARIDO MUJER NOVIO NOVIA AMIGO VECINO PADRINO MADRINA AHIJADO COMPADRE COMADRE PADRASTRO MADRASTRA HERMANASTRO HERMANASTRA HIJASTRO HIJASTRA MEDIOHERMANO TIOABUELO SOBRINONIETO CONSUEGRO YERNO CONYUGE PAREJA AMANTE PROMETIDO COMPAÑERO COLEGA CONOCIDO FAMILIAR PARIENTE CLAN TRIBU LINAJE DESCENDENCIA ASCENDENCIA ANTEPASADO ANCESTRO GENERACION GENEALOGIA ARBOL GENEALOGICO HERENCIA LEGADO SUCESION PRIMOGENITO BENJAMIN GEMELO MELLIZO TRILLIZO CUATRILLIZO ADOPTIVO BIOLOGICO TUTOR PUPILO HUERFANO VIUDO SOLTERO CASADO DIVORCIADO SEPARADO UNIO NLIBRE MATRIMONIO BODA ENLACE COMPROMISO NOVIAZGO AMISTAD FRATERNIDAD SORORIDAD SOLIDARIDAD CONVIVENCIA HOGAR CASA DOMESTICO MATRIARCADO PATRIARCADO APELLIDO NOMBRE APODO MOTE SOBRENOMBRE TATO YAYO NANA MAMA PAPA VIEJO VIEJA PEQUE",
+        "Marcas": "NIKE ADIDAS PUMA SONY APPLE SAMSUNG LG FORD TOYOTA HONDA BMW AUDI TESLA FERRARI COCACOLA PEPSI AMAZON GOOGLE FACEBOOK DISNEY NETFLIX ZARA LEGO ROLEX GUCCI PRADA VISA UBER MASTERCARD PAYPAL MICROSOFT INTEL AMD NVIDIA HP DELL LENOVO ASUS ACER CANON NIKON OLYMPUS FUJIFILM PANASONIC PHILIPS SIEMENS BOSCH MIELE DYSON IROBOT THERMOMIX NESPRESSO DOLCEGUSTO STARBUCKS BURGERKING MCDONALDS KFC SUBWAY DOMINOS PIZZA HUT TELEPIZZA DANONE NESTLE KELLOGGS OREO KITKAT M&MS SNICKERS MARS TWIX KINDER FERRERO LINDT MILKA TOBLERONE HEINEKEN CORONA BUDWEISER GUINNESS JOHNNIE WALKER JACK DANIELS ABSOLUT BACARDI HAVANA CLUB MOET CHANDON ROLLS ROYCE BENTLEY PORSCHE LAMBORGHINI MASERATI BUGATTI MC LAREN ASTON MARTIN JAGUAR LAND ROVER VOLVO SAAB VOLKSWAGEN MERCEDES OPEL PEUGEOT CITROEN RENAULT FIAT ALFA ROMEO JEEP CHRYSLER DODGE CHEVROLET CADILLAC BUICK GMC HYUNDAI KIA MAZDA NISSAN SUZUKI SUBARU MITSUBISHI YAMAHA KAWASAKI DUCATI HARLEY DAVIDSON TRIUMPH KTM VESPA",
+        "Ciudades": "MADRID PARIS LONDRES ROMA BERLIN MOSCU TOKIO PEKIN NUEVAYORK CHICAGO MIAMI TORONTO MEXICO LIMA BOGOTA RIO SIDNEY CAIRO DUBAI ESTAMBUL ATENAS VIENA PRAGA LISBOA DUBLIN OSLO ESTOCOLMO HELSINKI COPENHAGUE AMSTERDAM BRUSELAS BERNA VARSOVIA BUDAPEST BUCAREST SOFIA BELGRADO ZAGREB SARAJEVO TIRANA SKOPJE KIEV MINSK TALLIN RIGA VILNA CHISINAU TIFLIS EREVAM BAKU ASTANA TASKENT ASJABAD DUSHAMBE BISKEK KABUL ISLAMABAD NUEVADELHI DACCA KATMANDU COLOMBO RANGOON BANGKOK VIENTIAN HANOI PHNOMPENH KUALALUMPUR SINGAPUR YAKARTA MANILA TAIPEI SEUL PYONGYANG ULANBATOR CANBERRA WELLINGTON SUVA APIA NUKUALOFA PORTMORESBY HONIARA PORTVILA NOUMEA PAPEETE HONOLULU LOSANGELES SANFRANCISCO SEATTLE LASVEGAS HOUSTON DALLAS ATLANTA BOSTON PHILADELPHIA WASHINGTON DETROIT MONTREAL VANCOUVER OTTAWA QUEBEC HALIFAX CALGARY EDMONTON WINNIPEG CIUDADDE MEXICO GUADALAJARA MONTERREY CANCUN ACAPULCO TIJUANA PUEBLA VERACRUZ MERIDA OAXACA QUERETARO LEON TOLUCA PACHUCA",
+        "Cine": "PELICULA ACTOR ACTRIZ DIRECTOR GUION CAMARA LUCES SONIDO ACCION COMEDIA DRAMA TERROR AVENTURA ROMANCE DIBUJOS CINE PANTALLA BUTACA PALOMITAS ENTRADA PREMIO OSCAR FESTIVAL ESTRELLA FAMA HOLLYWOOD BOLLYWOOD NOLlywood INDIE CORTO LARGO DOCUMENTAL ANIMACION 3D IMAX VFX CGI EFECTOS ESPECIALES DOBLAJE SUBTITULOS BANDA SONORA CREDITOS REPARTO ELENCO PROTAGONISTA ANTAGONISTA SECUNDARIO EXTRA CAMEO REMAKE SECUELA PRECUELA SPINOFF REBOOT SAGAS TRILOGIA ESTRENO TAQUILLA CARTELERA TRAILER TEASER SPOILER CRITICA RESEÑA GALA ALFOMBRA ROJA CLAQUETA RODAJE TOMA ESCENA PLANO SECUENCIA CORTE EDICION MONTAJE POSTPRODUCCION MAQUILLAJE VESTUARIO DECORADO SET ESTUDIO PRODUCTORA DISTRIBUIDORA CENSURA CLASIFICACION GENERO WESTERN NEGRO MUSICAL BELICO HISTORICO BIOPIC CIENCIA FICCION FANTASIA SUSPENSE THRILLER MISTERIO POLICIACO GANGSTERS ARTES MARCIALES CULTO SERIE B Z MUDO SONORO BLANCO NEGRO COLOR DIGITAL ANALOGICO FILM METRAJE BOBINA PROYECTOR SALA MULTICINES",
+        "Musica": "CANCION MELODIA RITMO NOTA ACORDE SOL FA DO RE MI LETRA VOZ CORO BANDA ORQUESTA CONCIERTO DISCO RADIO POP ROCK JAZZ BLUES RAP METAL PUNK TECHNO HOUSE TRANCE DANCE ELECTRONICA EDM DISCO FUNK SOUL GOSPEL RNB HIPHOP TRAP REGGAETON LATINO SALSA MERENGUE BACHATA CUMBIA TANGO FLAMENCO SAMBA BOSSA NOVA REGGAE SKA DUB GRUNGE INDIE ALTERNATIVO FOLK COUNTRY BLUEGRASS CLASICA OPERA SINFONIA SONATA CONCIERTO REQUIM ORATORIO BALLET VALS POLKA MARCHA HIMNO VILLANCICO CANCIONERO PARTITURA PENTAGRAMA CLAVE SOL FA DO COMPAS TEMPO METRONOMO SILENCIO LIGADURA PUNTILLO BEMOL SOSTENIDO BECUADRO ESCALA MAYOR MENOR ARMONIA MELODIA CONTRAPUNTO FUGA CANON IMPROVISACION JAM SOLO DUO TRIO CUARTETO QUINTETO SEXTETO SEPTETO OCTETO NONETO DECETO CORO SOPRANO MEZZO CONTRALTO TENOR BARITONO BAJO DIRECTOR BATUTA ATRIL INSTRUMENTO SOLISTA CANTANTE MUSICO COMPOSITOR LETRISTA PRODUCTOR DJ REMIX COVER VERSION PLAYLIST ALBUM SENCILLO EP LP VINILO CASETE CD MP3 STREAMING",
+        "Clima": "SOL CALOR FRIO LLUVIA NIEVE GRANIZO VIENTO HURACAN TORNADO TORMENTA RAYO TRUENO NUBE NIEBLA HIELO HUMEDAD SEQUIA TEMPERATURA GRADOS TERMOMETRO CLIMA TIEMPO ATMOSFERA PRESION BAROMETRO ANEMOMETRO PLUVIOMETRO HIGROMETRO VELETA SATELITE RADAR METEOROLOGIA PRONOSTICO PREDICCION MAPA ISOBARA FRENTE FRIO CALIDO OCLUIDO ESTACIONARIO BORRASCA ANTICICLON BAJAS ALTAS PRESIONES VAGUADA DANA GOTA FRIA MONZON ALISIOS PONIENTE LEVANTE MISTRAL TRAMONTANA SIROCO CALIMA POLVO ARENA VENTISCA NEVASCA HELADA ROCIO ESCARCHA BRUMA VAPOR EVAPORACION CONDENSACION PRECIPITACION LLOVIZNA CHUBASCO AGUACERO DILUVIO INUNDACION RIADA DESBORDAMIENTO OLA CALOR FRIO INVIERNO VERANO OTOÑO PRIMAVERA ESTACION EQUINOCCIO SOLSTICIO TROPICO ECUADOR POLO ARTICO ANTARTICO CAMBIO CLIMATICO CALENTAMIENTO GLOBAL EFECTO INVERNADERO OZONO UV INDICE POLUCION CONTAMINACION SMOG LLUVIA ACIDA ARCOIRIS HALO PARHELIO AURORA ESPEJISMO RELAMPAGO CENTELLA NUBARRON CUMULO ESTRATO CIRRO NIMBO ALTOCUMULO",
+        "Astronomia": "TELESCOPIO CIELO NOCHE ESTRELLA CONSTELACION OSA POLAR ARIES TAURO GEMINIS CANCER LEO VIRGO LIBRA ESCORPIO SAGITARIO ACUARIO PISCIS ECLIPSE LUNA ORBITA ROTACION TRASLACION PRECISION NUTACION EQUINOCCIO SOLSTICIO PERIHELIO AFELIO APOGEO PERIGEO NODO FASE CRECIENTE MENGUANTE LLENA NUEVA GIBOSA CENIT NADIR HORIZONTE MERIDIANO AZIMUT ALTURA AR.RECTA DECLINACION ECLIPTICA ZODIACO POLO CELESTE ESFERA CELESTE UNIVERSO COSMOS GALAXIA VIA LACTEA ANDROMEDA TRIANGULO SOMBRERO REMOLINO CANGREJO NEBULOSA ORION CABEZA CABALLO ANILLO HELICE AGUILA CARINA LAGOON TRIFIDA PLANETA TIERRA MARTE JUPITER SATURNO URANO NEPTUNO MERCURIO VENUS PLUTON CERES ERIS MAKEMAKE HAUMEA SEDNA QUAOAR ORCUS IXION VARUNA COMETA HALLEY HALE BOPP SHOEMAKER LEVY HYAKUTAKE ENCKE BORRELLY WILD TEMPEL CHURYUMOV GERASIMENKO METEORO METEORITO BOLIDO ESTRELLA FUGAZ LLUVIA PERSEIDAS LEONIDAS GEMINIDAS CUADRANTIDAS LIRIDAS ORIONIDAS TAURIDAS URSIDAS DRACONIDAS SUPERNOVA NOVA HIPERNOVA AGUJERO NEGRO BLANCO GUSANO SINGULARIDAD EVENTO HORIZONTE QUASAR PULSAR MAGNETAR BLAZAR",
+        "Quimica": "ATOMO MOLECULA ELEMENTO PROTON NEUTRON ELECTRON NUCLEO ENLACE ACIDO BASE SAL GAS LIQUIDO SOLIDO METAL HIDROGENO OXIGENO CARBONO ORO PLATA HIERRO CLORO SODIO POTASIO CALCIO MAGNESIO ALUMINIO COBRE ZINC PLOMO ESTAÑO MERCURIO AZUFRE FOSFORO NITROGENO FLUOR YODO BROMO HELIO NEON ARGON KRIPTON XENON RADON URANIO PLUTONIO RADIO POLONIO TORIO ACTINIO LANTANO CERIO PRASEODIMIO NEODIMIO PROMETIO SAMARIO EUROPIO GADOLINIO TERBIO DISPROSIO HOLMIO ERBIO TULIO ITERBIO LUTECIO ESCANDIO TITANIO VANADIO CROMO MANGANESO COBALTO NIQUEL GALIO GERMANIO ARSENICO SELENIO RUBIDIO ESTRONCIO ITRIO CIRCONIO NIOBIO MOLIBDENO TECNECIO RUTENIO RODIO PALADIO CADMIO INDIO ESTAÑO ANTIMONIO TELURIO CESIO BARIO HAFNIO TANTALO WOLFRAMIO RENIO OSMIO IRIDIO PLATINO TALIO BISMUTO POLONIO ASTATO FRANCI RADON OGANESON TENESO MOSCOVIO LIVERMORIO FLEROVIO NIHONIO COPERNICIO ROENTGENIO DARMSTADTIO MEITNERIO HASSIO BOHRIO SEABORGIUM DUBNIOLAWRENCIO NOBELIO MENDELEVIO FERMIO EINSTENIO CALIFORNIO BERKELIO CURIO AMERICIO NEPTUNIO",
+        "Matematicas": "NUMERO CIFRA SUMA RESTA MULTIPLICACION DIVISION CUADRADO RAIZ FRACCION DECIMAL ECUACION VARIABLE FUNCION GRAFICA ALGEBRA CALCULO MEDIA CERO UNO DOS TRES PI EULER INFINITO IMAGINARIO COMPLEJO REAL RACIONAL IRRACIONAL NATURAL ENTERO PRIMO COMPUESTO PAR IMPAR POSITIVO NEGATIVO FACTOR DIVISOR MULTIPLO COMUN DENOMINADOR NUMERADOR COCIENTE RESTO RESIDUO POTENCIA EXPONENTE LOGARITMO BASE MANTISA INTEGRAL DERIVADA LIMITE SUCESION SERIE CONVERGENTE DIVERGENTE MATRIZ DETERMINANTE VECTOR TENSOR ESCALAR ESPACIO DIMENSION EJE COORDENADA CARTESIANA POLAR CILINDRICA ESFERICA GEOMETRIA PUNTO RECTA PLANO ANGULO TRIANGULO POLIGONO CIRCUNFERENCIA CIRCULO ELIPSE PARABOLA HIPERBOLA CONICA SUPERFICIE VOLUMEN AREA PERIMETRO TEOREMA PITAGORAS THALES EUCLIDES FERMAT GAUSS EULER NEWTON LEIBNIZ CANTOR HILBERT GÖDEL RIEMANN POINCARE NOETHER ABEL GALOIS GRUPO ANILLO CUERPO ESPACIO VECTORIAL TOPOLOGIA VARIEDAD HOMOTOPIA HOMOLOGIA PROBABILIDAD ESTADISTICA MEDIA MODA MEDIANA VARIANZA DESVIACION CORRELACION REGRESION DISTRIBUCION NORMAL BINOMIAL POISSON",
+        "Internet": "WEB PAGINA LINK ENLACE DOMINIO SERVIDOR NUBE EMAIL CHAT FORO BLOG RED PERFIL USUARIO LOGIN WIFI ROUTER DATOS VIRUS HACKER SPAM BROWSER BUSCADOR HTML CSS JS PHP SQL JAVA PYTHON RUBY NODE REACT ANGULAR VUE SVELTE FRAMEWORK LIBRERIA API REST GRAPHQL SOAP JSON XML HTTP HTTPS FTP SSH TCP IP DNS DHCP VPN LAN WAN MAN PAN WLAN VLAN MAC IPV4 IPV6 PUERTO SOCKET FIREWALL PROXY GATEWAY NAT SUBRED MASCARA PING TRACEROUTE NETSTAT TELNET CURL WGET GIT GITHUB GITLAB BITBUCKET DOCKER KUBERNETES JENKINS AWS AZURE GCP HEROKU VERCEL NETLIFY DIGITALOCEAN LINODE VPS DEDICADO SHARED HOSTING CMS WORDPRESS JOOMLA DRUPAL MAGENTO SHOPIFY WOOCOMMERCE PRESTASHOP MOODLE BLACKBOARD CANVAS SEO SEM ADSENSE ADWORDS ANALYTICS SEARCH CONSOLE TAG MANAGER FACEBOOK TWITTER INSTAGRAM LINKEDIN TIKTOK YOUTUBE TWITCH DISCORD REDDIT WHATSAPP TELEGRAM SIGNAL ZOOM MEET SKYPE TEAMS SLACK TRELLO JIRA NOTION ASANA FIGMA CANVA PHOTOSHOP ILLUSTRATOR PREMIERE FINALCUT",
+        "Halloween": "BRUJA FANTASMA VAMPIRO ZOMBI MOMIA ESQUELETO CALABAZA TRUCO TRATO CARAMELO DISFRAZ MIEDO TERROR NOCHE LUNA LOBO MURCIELAGO ARAÑA TUMBA MUERTO SANGRE GRITO SUSTO MAGIA HECHIZO POCION CALDERO ESCOBA GATO NEGRO BUHO CUERVO RATA GUSANO TELARAÑA CEMENTERIO LAPIDA ATAUD CRIPTA MAUSOLEO PANTEON FUNERAL ENTIERRO RESUCITADO NO MUERTO ESPIRITU ALMA ESPECTRO APARICION POLTERGEIST DEMONIO DIABLO SATANAS LUCIFER BELCEBU MEFISTOFELES INFIERNO AVERNO TINIEBLAS OSCURIDAD SOMBRA PENUMBRA NIEBLA BRUMA MISTERIO ENIGMA LEYENDA CUENTO HISTORIA RELATO PESADILLA SUEÑO ALUCINACION LOCURA PSICOPATA ASESINO SERIAL KILLER CUCHILLO HACHA SIERRA CADENA GRILLETE TORTURA DOLOR SUFRIMIENTO AGONIA MUERTE CADAVER CUERPO RESTOS HUESOS CRANEO CALAVERA MANDIBULA COLMILLO GARRA PELO PIEL CARNE VISCERAS SANGRE ROJO NEGRO NARANJA MORADO VELA LUZ FUEGO HOGUERA AQUELARRE RITUAL SACRIFICIO OFRENDA ALTAR IDOLO PAGANO CELTA SAMHAIN VSPERA SANTOS DIFUNTOS",
+        "Navidad": "NAVIDAD PAPANOEL REYES ARBOL ESTRELLA LUCES REGALO JUGUETE NIEVE RENO TRINEO CAMPANA CENA TURRON CAVA FAMILIA PAZ AMOR FIESTA INVIERNO DICIEMBRE ENERO NOCHEBUENA NOCHEVIEJA AÑONUEVO CAMPANADAS UVAS COTILLON BAILE MUSICA VILLANCICO PANDERETA ZAMBOMBA BOTELLA COPA BRINDIS DESEO PROPOSITO CARTA POSTAL TARJETA MENSAJE LLAMADA VISITA ABRAZO BESO SONRISA ALEGRIA FELICIDAD ILUSION MAGIA SORPRESA MILAGRO NACIMIENTO BELEN PESEBRE MULA BUEY PASTOR OVEJA ANGEL ARCANGEL GABRIEL MARIA JOSE JESUS NIÑO DIOS REY MAGO MELCHOR GASPAR BALTASAR ORO INCIENSO MIRRA CAMELLO ESTRELLA FUGAZ COMETA GUIA ORIENTE OCCIDENTE VIAJE ADORACION OFRENDA REGALO JUGUETE CARBON DULCE MAZAPAN POLVORON MANTECADO ROSCON CHOCOLATE CHURROS CASTANAS ASADAS FUEGO CHIMENEA CALCETIN BOLAS GUIRNALDA ESPUMILLON LAZO CINTA PAPEL ENVOLVER TIJERAS CELO ETIQUETA NOMBRE SORTEO LOTERIA GORDO PREMIO DINERO SALUD TRABAJO VACACIONES FRIO BUFANDA GUANTES GORRO ABRIGO BOTAS NIEVE MUÑECO BOLANIEVE",
+        "Piratas": "PIRATA BARCO CAPITAN LORO GARFIO PARCHE SOMBRERO ESPADA PISTOLA CAÑON POLVORA BANDERA CALAVERA TESORO MAPA ISLA COFRE ORO MONEDA JOYA RON MAR OCEANO TORMENTA OLAS VIENTO VELA MASTIL TIMON ANCLA CUBIERTA BODEGA CAMAROTE PUENTE PROA POPA BABOR ESTRIBOR NAVEGACION BRUJULA ASTROLABIO SEXTANTE CATALEJO TELESCOPIO VIGIA TORRE FARO PUERTO MUELLE TABERNA POSADA RON CERVEZA VINO AGUA COMIDA PESCA CAZA BOTIN SAQUEO ASALTO ABORDAJE COMBATE PELEA LUCHA DUELO MUERTE SANGRE HERIDA CICATRIZ TATUAJE BARBA PATA PALO GARFIO MANO OJO DIENTE OREJA NARIZ CARA CUERPO ALMA ESPIRITU FANTASMA LEYENDA MITO HISTORIA CUENTO CANCION MAPA X CRUZ ENTERRADO ESCONDIDO SECRETO PISTA ACERTIJO TRAMPA PELIGRO RIESGO AVENTURA VIAJE EXPEDICION TRIPULACION BANDA GRUPO AMIGO ENEMIGO RIVAL TRAIDOR MOTIN REBELION CASTIGO PLANCHA LATIGO CALABOZO PRISION CARCEL ISLA DESIERTA NAUFRAGO NAUFRAGIO RESCATE",
+        "Circo": "CIRCO CARPA PISTA PUBLICO PAYASO MALABARISTA TRAPECISTA DOMADOR LEON ELEFANTE MONO MAGO TRUCO CONEJO MUSICA DESFILE PALOMITAS GLOBO RISA APLAUSO GRITO SILBIDO FUNCION ESPECTACULO SHOW ACTUACION NUMERO PASE INTERMEDIO DESCANSO FINAL SALUDO REVERENCIA ARTISTA ACRÓBATA GIMNASTA CONTORSIONISTA EQUILIBRISTA FUNAMBULISTA ZANCUDO MIM O CLOWN AUGUSTO CARABLANCA PRESENTADOR MAESTRO CEREMONIAS DIRECTOR ORQUESTA BANDA MUSICA TAMBOR TROMPETA SAXOFON DISFRAZ MAQUILLAJE PELUCA NARIZ ROJA ZAPATOS GRANDES TRAJE BRILLANTE LENTEJUELAS PLUMAS SOMBRERO CHISTERA BASTON CAPA PAÑUELO FLOR PALOMA CARTA DADO ARO BOLA MAZA PLATO FUEGO CUCHILLO ESPADA CAÑON HOMBRE BALA MUJER BARBUDA ENANO GIGANTE FORZUDO LANZADOR CUCHILLOS AYUDANTE PARTENAIRE MAGIA ILUSIONISMO PRESTIDIGITACION ESCAPISMO MENTALISMO HIPNOSIS ANIMAL CABALLO PONY PERRO GATO OSO TIGRE LEON PANTERA FOCA CAMELLO LLAMA AVESTRUZ CARROMATO CARAVANA VIAJE GIRA CIUDAD PUEBLO CAMPO FERIA ATRACCION NORIA CARRUSEL TIOVIVO MONTAÑA RUSA",
+        "Hospital": "HOSPITAL CLINICA AMBULANCIA MEDICO DOCTOR ENFERMERO PACIENTE CAMILLA OPERACION BISTURI JARABE PASTILLA INYECCION AGUJA SUERO VENDA SANGRE DIAGNOSTICO CURA SALUD VIRUS BACTERIA INFECCION ENFERMEDAD DOLOR FIEBRE TOS GRIPE RESFRIADO HERIDA GOLPE FRACTURA ESGUINCE QUEMADURA CORTE PUNTOS CICATRIZ CIRUGIA QUIROFANO ANESTESIA REANIMACION UCI URGENCIAS CONSULTA SALA ESPERA RECEPCION ADMISION ALTA BAJA INFORME RECETA FARMACIA MEDICAMENTO ANTIBIOTICO ANALGESICO ANTIINFLAMATORIO CALMANTE SEDANTE SOMNIFERO VITAMINA VACUNA PRUEBA ANALISIS SANGRE ORINA HECES RADIOGRAFIA RAYOSX ECOGRAFIA TAC RESONANCIA ESCANER BIOPSIA CITOLOGIA ENDOSCOPIA COLONOSCOPIA CARDIOLOGIA NEUROLOGIA TRAUMATOLOGIA PEDIATRIA GINECOLOGIA OBSTETRICIA DERMATOLOGIA OFTALMOLOGIA OTORRINO PSIQUIATRIA PSICOLOGIA FISIOTERAPIA REHABILITACION GERIATRIA ONCOLOGIA PALIATIVOS MORTUORIO AUTOPSIA FORENSE CELADOR LIMPIEZA COCINA MANTENIMIENTO GERENCIA DIRECCION SEGURO MUTUA PRIVADO PUBLICO SEGURIDAD SOCIAL TARJETA SANITARIA CITA PREVIA TURNO LISTA ESPERA",
+        "Playa": "PLAYA MAR ARENA SOL CALOR VERANO BAÑO NADAR SURF OLA SAL TOALLA SOMBRILLA CONCHA CANGREJO PEZ BARCO HELADO CREMA GAFAS BIKINI BAÑADOR CHANCLAS GORRA SOMBRERO PAREO VESTIDO CAMISETA PANTALON CORTO FLOTADOR MANGUITOS COLCHONETA PELOTA CUBO PALA RASTRILLO CASTILLO ARENA FOSO TORRE MURALLA AGUA SALADA DULCE DUCHA GRIFO LAVAPIES CHIRINGUITO BAR RESTAURANTE TERRAZA MESA SILLA TUMBONA HAMACA TOLDO SOMBRA LUZ BRISA VIENTO MAREA ALTA BAJA RESACA CORRIENTE REMOLINO BANDERA VERDE AMARILLA ROJA SOCORRISTA SALVAVIDAS PUESTO VIGILANCIA TORRE BOTIQUIN PRIMEROS AUXILIOS RESCATE LANCHA MOTO AGUA ESQUI NAUTICO VELA WINDSURF KITESURF PADDLE SUP KAYAK PIRAGUA PEDALO BANANA DONUT PARACAIDAS BUCEO SNORKEL GAFAS TUBO ALETAS NEOPRENO PLOMO BOTELLA AIRE CAMARA FOTOS VIDEO SUBMARINA PEZ MEDUSA ALGA ERIZO ESTRELLA CORAL ROCA PIEDRA ACANTILADO CUEVA GRUTA ISLA FARO PUERTO",
+        "Camping": "CAMPING TIENDA SACO MOCHILA LINTERNA NAVAJA MAPA BOSQUE RIO NATURALEZA FUEGO HOGUERA LEÑA ASAR COMIDA MOSQUITO LLUVIA NOCHE ESTRELLAS LUNA AMIGOS FAMILIA PAREJA SOLOS GRUPO EXCURSION CAMINATA RUTA SENDERISMO TREKKING MONTAÑA VALLE LAGO CASCADA MIRADOR CIMA CUMBRE PICO ALITUD NIVEL MAR BRUJULA GPS MOVIL BATERIA CARGADOR SOLAR POWERBANK RADIO MUSICA GUITARRA CANCION JUEGO CARTAS DADOS DOMINO AJEDREZ LIBRO LECTURA DESCANSO SIESTA SUEÑO DORMIR DESPERTAR AMANECER PAJAROS SONIDO SILENCIO TRANQUILIDAD PAZ AIRE PURO OICGENO PULMON RESPIRAR AGUA FUENTE CANTIMPLORA BOTELLA VASO PLATO CUBIERTO HORNILLO GAS MECHERO CERILLAS SARTEN OLLA CAZO CAFETERA COMIDA LATA CONSERVA SOBRE PASTA ARROZ SOPA BOCADILLO FRUTA FRUTOSECOS CHOCOLATE ENERGIA BARRITA ISOTONICA BOTIQUIN TIRITA VENDA ALCOHOL YODO AGUJA HILO TIJERAS PINZAS MANTA AISLANTE ESTERILLA COLCHON HINCHABLE INFLADOR PARCHE REPARACION PIQUETA VIENTO TENSOR TOLDO RAFIA SUELO IMPERMEABLE",
+        "Granja": "GRANJA CAMPO TIERRA CULTIVO TRACTOR SEMILLA PLANTA FRUTA VERDURA TRIGO MAIZ PAJA ESTABLO CORRAL GALLINERO ANIMAL VACA CERDO OVEJA CABRA CABALLO GALLINA POLLO PATO PERRO GATO RATON CONEJO PAVO GANSO OCA BURRO MULA YEGUA POTRO TERNERO LECHON CORDERO CABRITO POLLITO HUEVO LECHE CARNE LANA PLUMA PIEL CUERO ESTIERCOL ABONO FERTILIZANTE AGUA RIEGO CANAL ZANJA POZO BOMBA MANGUERA ASPERSOR GOTEO LLUVIA SOL VIENTO CLIMA TIEMPO ESTACION CALENDARIO LUNA FASE COSECHA SIEMBRA PODA INJERTO RECOLECCION FRUTO GRANO CEREAL LEGUMBRE HORTALIZA RAIZ TALLO HOJA FLOR ARBOL ARBUSTO HIERBA PASTO FORRAJE HENO SILO GRANERO ALMACEN GARAJE TALLER HERRAMIENTA PALA AZADA RASTRILLO HORCA CARRETILLA CUBO SACO CAJA CESTA MERCADO VENTA PRECIO GANANCIA PERDIDA TRABAJO ESFUERZO SUDOR CANSANCIO DESCANSO COMIDA BEBIDA FIESTA FERIA CONCURSO PREMIO",
+        "Fantasia": "DRAGON UNICORNIO HADA ELFO ENANO GIGANTE MAGO BRUJA REY REINA CASTILLO TORRE ESPADA ESCUDO MAGIA POCION TESORO MONSTRUO LEYENDA CUENTO HEROE AVENTURA VIAJE MISION DESTINO PROFECIA ELEGIDO OSCURO SEÑOR VILLANO MALVADO EJERCITO GUERRA BATALLA LUCHA MUERTE VIDA RESURRECCION INMORTAL ETERNO TIEMPO ESPACIO MUNDO REINO IMPERIO CIUDAD PUEBLO ALDEA BOSQUE SELVA MONTAÑA CUEVA MAZMORRA LABERINTO TRAMPA ACERTIJO ENIGMA SECRETO MISTERIO PODER FUERZA SABIDURIA VALOR HONOR LEALTAD TRAICION AMOR ODIO VENGANZA PERDON SACRIFICIO OFRENDA RITUAL HECHIZO ENCANTAMIENTO MALDICION BENDICION DIOS DIOSA SEMIDIOS TITAN DEMONIO ANGEL ESPIRITU FANTASMA ESPECTRO SOMBRA LUZ FUEGO AGUA TIERRA AIRE ELEMENTO NATURALEZA ANIMAL BESTIA CRIATURA SER RAZA HUMANO ORCO GOLEM TROLL OGRO SIRENA TRITON CENTAURO MINOTAURO GRIFO FENIX PEGASO QUIMERA BASILISCO HIDRA KRAKEN LEVIATAN BEHEMOTH",
+        "Superheroes": "HEROE VILLANO PODER FUERZA VUELO VELOCIDAD RAYO FUEGO CAPA MASCARA TRAJE MISION PELIGRO SALVAR MUNDO CIUDAD JUSTICIA LUCHA EQUIPO MUTANTE ROBOT MAGIA BASE SECRETA GUARIDA IDENTIDAD DOBLE ALTER EGO ORIGEN ACCIDENTE EXPERIMENTO ALIENIGENA TECNOLOGIA ARMADURA ARMA ESCUDO ESPADA LAZO ANILLO MARTILLO ARCO FLECHA GARRAS COLMILLOS ALAS COLA VISION OIDO OLFATO GUSTO TACTO SENTIDO ARACNIDO RADAR TELEPATIA TELEQUINESIS CONTROL MENTAL INVISIBILIDAD INTANGIBILIDAD ELASTICIDAD CAMBIO FORMA TAMAÑO GIGANTE DIMINUTO FUERTE RESISTENTE INVULNERABLE INMORTAL REGENERACION CURACION ENERGIA RAYO LASER HIELO CONGELAR AGUA AIRE TIERRA PLANTA ANIMAL BESTIA TRANSFORMARSE VIAJAR TIEMPO ESPACIO DIMENSION UNIVERSO MULTIVERSO REALIDAD PARALELA CLON COPIA IMAGEN HOLOGRAMA ILUSION MENTIRA VERDAD BIEN MAL MORAL ETICA LEY ORDEN CAOS DESTRUCCION SALVACION ESPERANZA FE AMISTAD AMOR ODIO RIVAL ENEMIGO NEMESIS COMPAÑERO SIDEKICK GRUPO LIGA VENGADORES DEFENSORES XMEN 4FANTASTICOS TITANES JUSTICIA SOCIEDAD SQUAD SUICIDE",
+        "Videojuegos": "JUEGO CONSOLA MANDO PANTALLA NIVEL VIDA PUNTOS RECORD PARTIDA ONLINE WIFI LAG BUG PERSONAJE ARMA MAPA MISION BOSS FINAL GAME OVER WIN START SAVE LOAD PAUSE MENU OPCIONES CONFIGURACION GRAFICOS SONIDO MUSICA EFECTOS VOCES TEXTO IDIOMA SUBTITULOS DOBLAJE HISTORIA GUION TRAMA NARRATIVA CINEMATICA CUTSCENE INTRO OUTRO CREDITOS DLC EXPANSION PARCHE UPDATE MOD HACK CHEAT TRUCO GUIA TUTORIAL WIKI FORO COMUNIDAD YOUTUBE TWITCH STREAMER GAMER JUGADOR PRO NOOB CASUAL HARDCORE SPEEDRUN ESPORT TORNEO COMPETICION EQUIPO CLAN GREMIO GUILD PARTY RAID DUNGEON MAZMORRA LOOT DROP ITEM OBJETO INVENTARIO MOCHILA TIENDA NPC QUEST MISION SECUNDARIA PRINCIPAL DIALOGO DECISION FINAL MULTIPLE ENDING PLATAFORMAS ACCION AVENTURA ROL RPG JRPG MMORPG SHOOTER FPS TPS MOBA RTS ESTRATEGIA DEPORTES CARRERAS SIMULACION PUZZLE TERROR SURVIVAL HORROR INDIE RETRO ARCADE PIXEL ART 2D 3D VR REALIDAD VIRTUAL",
+        "Idiomas": "ESPAÑOL INGLES FRANCES ALEMAN ITALIANO PORTUGUES RUSO CHINO JAPONES ARABE LATIN SUECO NORUEGO POLACO GRIEGO HOLANDES CHECO RUMANO TURCO COREANO HINDI BENGALI PUNYABI JAVANES TELUGU MARATI TAMIL VIETNAMITA URDU PERSA GUJARATI HAUSA KANNADA SUNDA MALAYO OROMO BIRMANO TAILANDES AMHARICO YORUBA SINDHI PASTO ZULU IGBO UZBEKO MALGACHE SOMALI QUECHUA GUARANI AYMARA NAHUATL MAYA EUSKERA CATALAN GALLEGO VALENCIANO ASTURIANO ARAGONES OCCITANO BRETÓN CORSO SARDO SICILIANO NAPOLITANO VENECIANO LOMBARDO PIAMONTES LIGUR FRIULANO LADINO ROMANCHE GAELICO ESCOCES IRLANDES MANES GALES CORNICO ESPERANTO IDO INTERLINGUA VOLAPUK KLINGON ELFICO DOTHRAKI VALYRIO NA'VI SIMLISH MINION R2D2 MORSE BRAILLE SIGNOS LENGUAJE PROGRAMACION BINARIO HEXADECIMAL CODIGO CIFRADO ENCRIPTADO TRADUCCION INTERPRETACION DICCIONARIO GRAMATICA VOCABULARIO FONETICA FONOLOGIA MORFOLOGIA SINTAXIS SEMANTICA PRAGMATICA DIALECTO ACENTO JERGA ARGOT MODISMO REFRAN DICHO FRASE HECHA",
+        "Minerales": "PIEDRA ROCA MINERAL CRISTAL GEMA JOYA ORO PLATA COBRE HIERRO CARBON DIAMANTE RUBI ZAFIRO ESMERALDA TOPACIO AMATISTA CUARZO JADE TURQUESA PERLA AMBAR CORAL OPALO AGATA ONIX JASPE LAPISLAZULI MALAQUITA AZURITA PIRITA GALENA CINAABRIO MAGNETITA HEMATITA LIMONITA SIDERITA CALCITA ARAGONITO DOLOMITA YESO ANHIDRITA HALITA SILVINA FLUORITA APATITO BARITA CELESTINA ANGLESITA CERUSITA SCHEELITA WOLFRAMITA CASITERITA RUTILO ILMENITA CROMITA BAUXITA CORINDON ESPINELA GRANATE OLIVINO PIROXENO ANFIBOL MICA TALCO CLORITA SERPENTINA CAOLINITA ILLITA MONTMORILLONITA FELDESPATO PLAGIOCLASA ORTOCLASA CUARZO CITRINO AHUMADO ROSA LECHOSO JACINTO OJO TIGRE OJO GATO OJO HALCON OBSIDIANA VIDRIO VOLCANICO PUMITA BASALTO GRANITO GNEIS ESQUISTO PIZARRA FILITA MARMOL CALIZA ARENISCA CONGLOMERADO BRECHA TUBA TOBA TRAVERTINO DOLOMIA LIGNITO ANTRACITA HULLA TURBA PETROLEO GAS BETUN ASFALTO",
+        "Bebidas": "AGUA LECHE ZUMO CAFE TE CHOCOLATE REFRESCO COLA LIMONADA BATIDO CERVEZA VINO SIDRA CAVA LICOR WHISKY RON VODKA TEQUILA ANIS MATE MENTA MANZANILLA TILA POLEO ROOIBOS CHAI MATCHA OOLONG PUERH BLANCO VERDE NEGRO ROJO AZUL HIELO FRIO CALIENTE TIBIO VASO TAZA COPA BOTELLA JARRA LATA TETERA CAFETERA ESPRESSO CORTADO MANCHADO CAPUCHINO LATTE MOKA AMERICANO IRLANDES BOMBON VIENES FRAPPE HELADO GRANIZADO HORCHATA CEBADA AVENA SOJA ALMENDRA ARROZ COCO AVELLANA NUEZ ANACARDO LIQUIDO SED BEBER TRAGO SORBO CHUPITO COCTEL COMBINADO CUBATA GINTONIC MOJITO CAIPIRINHA CAIPIROSKA DAIQUIRI MARGARITA PIÑA COLADA SAN FRANCISCO BLOODY MARY MANHATTAN MARTINI COSMOPOLITAN SEX ON THE BEACH TEQUILA SUNRISE LONG ISLAND ICED TEA MAI TAI ZOMBIE HURRICANE BLUE LAGOON B52 KAMIKAZE JAGERBOMB CUARESMA SANGRE TORO TINTO BLANCO ROSADO ESPUMOSO DULCE SECO SEMISECO AÑEJO JOVEN CRIANZA RESERVA GRAN",
+        "Postres": "POSTRE DULCE AZUCAR PASTEL TARTA GALLETA DONUT BOLLO CHOCOLATE BOMBON HELADO YOGUR FLAN ARROZ PUDIN GELATINA NATA CREMA FRUTA MIEL CARAMELO MERENGUE MAZAPAN TURRON POLVORON MANTECADO ROSCON CHURROS BUÑUELOS PESTIÑOS TORRIJAS LECHE FRITA TOCINO CIELO YEMAS SANTA TERESA PIONONO BIZCOCHO MAGDALENA SOBAO PASIEGO ENSAIMADA NAPOLITANA CAÑA HOJALDRE PALMERA SUISOS BRIOCHE CROISSANT PANETTONE TIRAMISU PANNA COTTA COULANT BROWNIE MUFFIN CUPCAKE CHEESECAKE STRUDEL PRETZEL GOFRE CREPE TORTITA PANCAKE SOUFFLE MOUSSE TRUFA ROCA ALMENDRA GARRAPIÑADA PELADILLA FRUTA ESCARCHADA MEMBRILLO COMPOTA MERMELADA CONFITURA ALMIBAR CABELLO ANGEL YEMA PASTELERA CHANTILLY DULCE LECHE AREQUIPE CAJETA MANJAR BLANCO ALFAJOR PIONONO ROGEL CHAJÁ BALCARCE LEMON PIE APPLE PIE PECAN PIE CARROT CAKE RED VELVET BLACK FOREST SACHER TART TARTALETA MILLEFEUILLE ECLAIR PROFITEROLE LIONESAS REPOLLA PETISU",
+        "Monedas": "DINERO MONEDA BILLETE EURO DOLAR LIBRA YEN YUAN PESO REAL FRANCO CORONA LIRA DINAR RUBLO SOL BOLIVIANO COLON ESCUDO PESETA MARCO DRACMA FLORIN CHELIN GUINEA TALERO DOBLON REAL DE A OCHO MARAVEDI SUELDO OBOLE SESTERCIO DENARIO AUREO DUCADO ESCUDO CENTIMO CENTAVO PENIQUE SEN PFENNIG KOPEK FILLER GROSCHEN HALER LIPA STOTINKA BAN PARA MILLIME FIL QIRSH PIASTRA DIRHAM RIYAL RUPIA TAKA KYAT BAHT DONG RINGGIT RUPIAH WON PATACA PULA KWACHA RAND NAIRA CEDI DALASI LEONE DOLLAR EUROPOUND STERLING SWISS FRANC CANADIAN AUSTRALIAN NEW ZEALAND SINGAPORE HONG KONG TAIWAN BRAZILIAN REAL MEXICAN ARGENTINE CHILEAN COLOMBIAN URUGUAYAN CUBAN DOMINICAN VENEZUELAN BOLIVAR PERUVIAN NUEVO SOL PARAGUAYAN GUARANI BOLIVIAN BOLIVIANO ECUADORIAN SUCRE GUATEMALAN QUETZAL HONDURAN LEMPIRA NICARAGUAN CORDOBA COSTA RICAN COLON PANAMANIAN BALBOA HAITIAN GOURDE JAMAICAN TRINIDAD TOBAGO EAST CARIBBEAN",
+        "Flores": "FLOR PETALO TALLO HOJA RAIZ POLEN AROMA COLOR ROSA CLAVEL TULIPAN MARGARITA GIRASOL AMAPOLA VIOLETA LIRIO ORQUIDEA JAZMIN GERANIO LOTO NENUFAR CALA ALCATRAZ CRISANTEMO DALIA HORTENSIA AZUCENA BEGONIA CAMELIA GARDENIA HIBISCO LAVANDA LILA MAGNOLIA MIMOSA NARCIZO PENSAMIENTO PETUNIA PEONIA PRIMULA VERBENA ZINIA ALEGRIA AMARILIS ANEMONA ASTER AZALEA BOUGAINVILLEA CALENDULA CAMPANILLA CAPUCHINA CELOSIA CICLAMEN CLAVELINA CLEMATIDE COLUMBINE COSMOS CROCUS DONDIEGO DRAGON ESPUELA ESTATICE FLORES DE BACH FREESIA FUCSIA GAZANIA GERBERA GLADIOLO GLICINA GUISANTE OLOR HELENIO HELIOTROPO IPOMEA JACINTO KALANCHOE LOBELIA LUPINO MALVA MARAVILLA MATACANDIL MILENRAMA MUGUET MUSCARI NASTURTIUM NIGELLA PASIONARIA PELARGONIO PHLOX PLUMBAGO POINSETTIA RANUNCULO RODODENDRO SALVIA SAPONARIA SAXIFRAGA SILENE STRELITZIA TAGETE TANACETO TOXICODENDRO TRABADILLA TRITOMA TROLLIUS TROMPETA VALERIANA VERONICA VINCA VIOLA YUCA ZAPATITO VENUS"
+    };
+    const ICONS = {"Animales":"🐶","Colores":"🎨","Paises":"🌍","Frutas":"🍓","Cuerpo":"💪","Casa":"🏠","Escuela":"🎒","Comida":"🍕","Ropa":"👗","Deportes":"⚽","Profesiones":"👷","Verbos":"🏃","Transporte":"🚗","Sentimientos":"❤️","Naturaleza":"🌳","Espacio":"🪐","Instrumentos":"🎸","Herramientas":"🔨","Tecnologia":"💻","Materiales":"🧱","Geometria":"📐","Tiempo":"⏰","Familia":"👨‍👩‍👧","Marcas":"🏷️","Ciudades":"🏙️","Cine":"🎬","Musica":"🎵","Clima":"⛈️","Astronomia":"🔭","Quimica":"🧪","Matematicas":"➗","Internet":"🌐","Halloween":"🎃","Navidad":"🎄","Piratas":"🏴‍☠️","Circo":"🎪","Hospital":"🏥","Playa":"🏖️","Camping":"⛺","Granja":"🚜","Fantasia":"🐉","Superheroes":"🦸","Videojuegos":"🎮","Idiomas":"🗣️","Minerales":"💎","Bebidas":"🥤","Postres":"🍰","Monedas":"💰","Flores":"🌻"};
+    const COLORS = ['#e57373','#F06292','#BA68C8','#9575CD','#7986CB','#64B5F6','#4FC3F7','#4DD0E1','#4DB6AC','#81C784','#AED581','#DCE775','#FFF176','#FFD54F','#FFB74D','#FF8A65'];
+    const DB = {}; Object.keys(RAW_DB).forEach(k => DB[k] = RAW_DB[k].split(" "));
+
+    const Leaderboard = {
+        names: ["Santiago M.","Mateo R.","Sofía G.","Valentina L.","Sebastián C.","María José","Leonardo F.","Ximena P.","Matías H.","Camila S.","Diego T.","Valeria A.","Gabriel B.","Renata D.","Gael E.","Emilia V.","Lucas Z.","Daniela Q.","Nicolás J.","Victoria K.","Samuel N.","Isabella W.","Alejandro X.","Natalia Y.","Daniel O.","Fernanda U.","Manuel I.","Andrea P.","Francisco","Lucía M.","Luis G.","Elena R.","Carlos S.","Julieta T.","Iker L.","Mariana C.","Miguel A.","Sara D.","David F.","Gabriela H.","José L.","Ana P.","Juan D.","Paula M.","Angel R.","Jimena T.","Adrian S.","Regina O.","Fernando G."],
+        avatars: ["🐶","🐱","🦊","🦁","🐯","🦄","🐮","🐷","🐸","🐵","🐵","🐨","🐲","👽","🤖","🎃","🧟","🦸","🦹","🕵️","👮","👷","👩‍🚀","👨‍🎤","🧛","🧞","🧜","🧚","🧘","🏄","🚴","🏆","🎲","🎱","🕹️","🚀","💊","🧿","🦠","🧬"],
+        data: [],
+        init() {
+            const saved = localStorage.getItem('sl_v14_bots');
+            if(saved) { this.data = JSON.parse(saved); } else { this.generateBots(); }
+        },
+        generateBots() {
+            this.data = [];
+            for(let i=0; i<200; i++) {
+                let name = this.names[i % this.names.length];
+                if(i > this.names.length) name += " " + (i%9);
+                let avatar = this.avatars[i % this.avatars.length];
+                let baseStars = 0;
+                if(i < 5) baseStars = 280 + Math.floor(Math.random()*30);
+                else if(i < 20) baseStars = 200 + Math.floor(Math.random()*50);
+                else baseStars = Math.max(5, 250 - (i * 1.2)); 
+                this.data.push({ id: i, name: name, avatar: avatar, stars: Math.floor(baseStars) });
+            }
+            this.save();
+        },
+        update(userStars) {
+            this.data.forEach(bot => { if(Math.random() > 0.8) bot.stars += Math.floor(Math.random() * 2); });
+            const closeRivals = this.data.filter(b => Math.abs(b.stars - userStars) < 15);
+            if(closeRivals.length > 0) {
+                const nemesis = closeRivals[Math.floor(Math.random()*closeRivals.length)];
+                if(nemesis.stars <= userStars) nemesis.stars = userStars + Math.floor(Math.random()*3) + 1;
+            }
+            this.data.sort((a,b) => b.stars - a.stars);
+            if(this.data[0].stars < userStars + 10) {
+                this.data[0].stars = userStars + 15;
+                this.data[1].stars = userStars + 8;
+            }
+            this.save();
+        },
+        save() { localStorage.setItem('sl_v14_bots', JSON.stringify(this.data)); },
+        getUserTotalStars() {
+            const starsObj = JSON.parse(localStorage.getItem('sl_v14_stars') || '{}');
+            let total = 0; Object.values(starsObj).forEach(s => total += s); return total;
+        },
+        open() {
+            AudioSys.click();
+            const userStars = this.getUserTotalStars();
+            this.update(userStars);
+            
+            // USAR DATOS DEL PERFIL
+            const userData = UserProfile.data || { name: "TÚ (YO)", avatar: "👤" };
+            
+            const userEntry = { name: userData.name + " (TÚ)", avatar: userData.avatar, stars: userStars, isMe: true };
+            let allPlayers = [...this.data, userEntry];
+            allPlayers.sort((a,b) => b.stars - a.stars);
+            const myRank = allPlayers.findIndex(p => p.isMe) + 1;
+            
+            const list = document.getElementById('rank-list'); list.innerHTML = '';
+            const showLimit = 40; let renderedUser = false;
+
+            allPlayers.slice(0, showLimit).forEach((p, idx) => {
+                this.createRow(list, p, idx+1); if(p.isMe) renderedUser = true;
+            });
+
+            if(!renderedUser) {
+                const divider = document.createElement('div');
+                divider.style.textAlign='center'; divider.style.padding='10px'; divider.innerHTML='...';
+                list.appendChild(divider); this.createRow(list, userEntry, myRank);
+            }
+            document.getElementById('my-rank-display').innerText = '#' + myRank;
+            document.getElementById('modal-ranking').style.display = 'flex';
+        },
+        createRow(container, p, rank) {
+            const r = document.createElement('div'); r.className = `rank-row ${p.isMe ? 'me' : ''}`;
+            let rankClass = ''; if(rank===1) rankClass='top-1'; if(rank===2) rankClass='top-2'; if(rank===3) rankClass='top-3';
+            let rankIcon = rank; if(rank===1) rankIcon='🥇'; if(rank===2) rankIcon='🥈'; if(rank===3) rankIcon='🥉';
+
+            r.innerHTML = `
+                <div class="r-pos ${rankClass}">${rankIcon}</div>
+                <div class="r-avatar">${p.avatar}</div>
+                <div class="r-info"><span class="r-name" style="${p.isMe?'color:var(--primary)':''}">${p.name}</span><span class="r-badge">${this.getRankTitle(p.stars)}</span></div>
+                <div class="r-score">${p.stars} <span>★</span></div>
+            `;
+            container.appendChild(r);
+        },
+        getRankTitle(s) {
+            if(s > 300) return "LEYENDA"; if(s > 220) return "GRAN MAESTRO"; if(s > 150) return "PROFESIONAL";
+            if(s > 80) return "EXPERTO"; if(s > 40) return "AVANZADO"; if(s > 15) return "COMPETIDOR"; return "NOVATO";
+        }
+    };
+
+    class App {
+        constructor() {
+            this.state = {
+                cat:null, lvl:1, grid:[], words:[], found:[], hidden:[], wCols:{},
+                timer:0, int:null, sel:{on:false, s:null, c:null}, targetTime:0,
+                obstacle: null, timerPaused: false, selectedLvl: null,
+                prog: JSON.parse(localStorage.getItem('sl_v14_prog') || '{}'),
+                stars: JSON.parse(localStorage.getItem('sl_v14_stars') || '{}'),
+                times: JSON.parse(localStorage.getItem('sl_v14_times') || '{}')
+            };
+            this.dom = {
+                menu: document.getElementById('cat-grid'), lvls: document.getElementById('lvl-grid'),
+                board: document.getElementById('board'), chips: document.getElementById('chips'),
+                modal: document.getElementById('modal'), modalInfo: document.getElementById('modal-info'),
+                toast: document.getElementById('toast'), obsBadge: document.getElementById('obs-badge'), 
+                timerBox: document.getElementById('timer-box')
+            };
+            this.init();
+        }
+
+        init() {
+            this.renderMenu();
+            document.addEventListener('pointerup', () => this.endSel());
+            this.dom.board.addEventListener('touchmove', (e) => e.preventDefault(), {passive:false});
+        }
+
+        nav(viewId) {
+            try {
+                AudioSys.click();
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-menu').style.display = 'none';
+                const t = document.getElementById(viewId);
+                if(t) { t.style.display='flex'; setTimeout(()=>t.classList.add('active'),10); }
+                if(viewId==='view-levels') this.renderLvls();
+                if(viewId==='view-menu') document.getElementById('view-menu').style.display='flex';
+                this.dom.modal.style.display='none';
+                this.dom.modalInfo.style.display='none';
+                this.resetObs();
+            } catch(e) { console.error(e); document.getElementById('view-menu').style.display='flex'; }
+        }
+
+        getObstacle(lvl) {
+            if(lvl < 10 || lvl % 5 !== 0) return null;
+            const type = lvl % 70; 
+            if(type === 10 || type === 15) return {type:'flash', name:'LINTERNA'};
+            if(type === 20 || type === 25) return {type:'quake', name:'TERREMOTO'};
+            if(type === 30 || type === 35) return {type:'mirror', name:'ESPEJO'};
+            if(type === 40 || type === 45) return {type:'spin', name:'VÓRTICE'};
+            if(type === 50 || type === 55) return {type:'dance', name:'REVOLTIJO'};
+            if(type === 60 || type === 65) return {type:'blur', name:'NIEBLA'};
+            if(type === 0 || type === 5) return {type:'pulse', name:'LATIDO'};
+            return {type:'chaos', name:'CAOS TOTAL'};
+        }
+
+        applyObs() {
+            const o = this.state.obstacle; const b = this.dom.board; if(!o) return;
+            if(o.type==='flash') b.classList.add('obs-flash');
+            if(o.type==='quake') b.classList.add('obs-quake');
+            if(o.type==='mirror') b.classList.add('obs-mirror');
+            if(o.type==='dance') b.classList.add('obs-dance');
+            if(o.type==='pulse') b.classList.add('obs-pulse');
+            if(o.type==='blur') b.classList.add('obs-blur');
+            if(o.type==='spin'||o.type==='chaos') {
+                this.obsInt = setInterval(() => {
+                    const r=['obs-spin-90','obs-spin-180','obs-spin-270',''];
+                    b.classList.remove(...r); b.classList.add(r[Math.floor(Math.random()*r.length)]);
+                }, 4000);
+            }
+        }
+        resetObs() { 
+            this.dom.board.className='board'; 
+            if(this.obsInt) clearInterval(this.obsInt); 
+            this.state.timerPaused = false;
+            this.dom.timerBox.classList.remove('paused');
+        }
+
+        renderMenu() {
+            this.dom.menu.innerHTML = '';
+            Object.keys(DB).forEach(k => {
+                const p = this.state.prog[k] || 1;
+                const d = document.createElement('div'); d.className = 'card';
+                d.innerHTML = `<span class="card-icon">${ICONS[k]||'📚'}</span><span class="card-title">${k}</span><span class="card-prog">${p>100?'MAX':'Nivel '+p}</span>`;
+                d.onclick = () => { this.state.cat=k; document.getElementById('lvl-title').innerText=k; this.nav('view-levels'); };
+                this.dom.menu.appendChild(d);
+            });
+        }
+
+        renderLvls() {
+            this.dom.lvls.innerHTML = '';
+            const max = this.state.prog[this.state.cat] || 1;
+            for(let i=1; i<=100; i++) {
+                const s = this.state.stars[`${this.state.cat}_${i}`]||0;
+                const b = document.createElement('div');
+                let c = 'lvl-btn'; 
+                if(i<max) c+=' passed'; else if(i===max) c+=' current'; else b.style.opacity=0.6;
+                if(i%5===0 && i>=10) c+=' boss'; else if(this.getObstacle(i)) c+=' challenge';
+                b.className = c; b.innerHTML = `<span>${i}</span><div class="stars-mini">${'★'.repeat(s)}</div>`;
+                if(i < max) b.onclick = () => this.showLevelInfo(i);
+                else if (i === max) b.onclick = () => this.start(i);
+                this.dom.lvls.appendChild(b);
+            }
+        }
+
+        showLevelInfo(lvl) {
+            AudioSys.click();
+            this.state.selectedLvl = lvl;
+            const k = `${this.state.cat}_${lvl}`;
+            const stars = this.state.stars[k] || 0;
+            const time = this.state.times[k] || 0;
+            let starHtml = ''; for(let i=0; i<3; i++) starHtml += `<span class="${i<stars?'star-f':'star-e'}">★</span>`;
+            let timeStr = '--:--';
+            if(time > 0) {
+                const m = Math.floor(time/60).toString().padStart(2,'0');
+                const s = (time%60).toString().padStart(2,'0');
+                timeStr = `${m}:${s}`;
+            }
+            document.getElementById('info-lvl').innerText = lvl;
+            document.getElementById('info-stars').innerHTML = starHtml;
+            document.getElementById('info-time').innerText = timeStr;
+            this.dom.modalInfo.style.display = 'flex';
+        }
+
+        replayFromInfo() {
+            this.dom.modalInfo.style.display = 'none';
+            this.start(this.state.selectedLvl);
+        }
+
+        launchConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            for(let i=0; i<150; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random()*100 + 'vw';
+                c.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+                c.style.animationDuration = (Math.random()*2 + 2)+'s';
+                c.style.animationDelay = (Math.random()*0.5)+'s';
+                document.body.appendChild(c);
+                setTimeout(()=>c.remove(), 4000);
+            }
+        }
+
+        start(lvl) {
+            try {
+                this.state.lvl = lvl; this.state.found = []; this.state.hidden = [];
+                this.state.timer = 0; this.state.wCols = {}; this.state.obstacle = this.getObstacle(lvl);
+                this.state.timerPaused = false;
+
+                const isBoss = (lvl % 10 === 0);
+                let wc, sz;
+                if (isBoss) { wc = 20 + Math.floor((lvl - 10) / 10); sz = 16 + Math.floor(lvl / 10); if(sz > 19) sz = 19; } 
+                else { const progress = (lvl - 1) % 30; const increase = Math.floor(progress / 3); wc = 5 + increase; if (wc > 15) { wc = 5; } sz = 10 + Math.floor(lvl / 5); if (sz > 19) sz = 19; }
+                if(this.state.obstacle && this.state.obstacle.type === 'flash') { wc = 12; }
+                let hc = 1 + Math.floor(lvl/20); 
+                document.body.className = isBoss ? 'boss-mode' : (this.state.obstacle ? 'challenge-mode' : '');
+
+                let pool = [...DB[this.state.cat]];
+                while(pool.length < wc + hc + 5) pool = pool.concat(DB[this.state.cat]); 
+                pool.sort(() => Math.random() - 0.5);
+
+                this.state.words = pool.slice(0, wc).map(w=>w.toUpperCase());
+                this.state.hidden = pool.slice(wc, wc+hc).map(w=>w.toUpperCase());
+                
+                // === COLORES UNICOS PARA TABLERO ===
+                let sessionColors = [];
+                if(this.state.words.length <= COLORS.length) {
+                    sessionColors = [...COLORS].sort(()=>Math.random()-0.5).slice(0, this.state.words.length);
+                } else {
+                    for(let i=0; i<this.state.words.length; i++) {
+                        const h = Math.floor(i * 360 / this.state.words.length);
+                        sessionColors.push(`hsl(${h}, 70%, 60%)`);
+                    }
+                    sessionColors.sort(()=>Math.random()-0.5);
+                }
+                this.state.words.forEach((w,i) => this.state.wCols[w] = sessionColors[i]);
+                
+                let baseT = (wc * 4.5) + (sz * 2.5); 
+                if(this.state.obstacle) baseT *= 1.4; if(isBoss) baseT *= 1.3;
+                this.state.targetTime = Math.ceil(baseT);
+
+                if(this.genGrid(sz)) {
+                    document.getElementById('g-lvl-num').innerText = `NIVEL ${lvl}`;
+                    const bdg = this.dom.obsBadge;
+                    if(this.state.obstacle) { bdg.style.display='block'; bdg.innerText='⚠️ '+this.state.obstacle.name; }
+                    else bdg.style.display='none';
+                    this.updUI(); this.nav('view-game'); this.applyObs(); this.runTimer();
+                    if(isBoss) this.toast(`💀 BOSS: ${wc} PALABRAS`, "alert");
+                    else if(this.state.obstacle) this.toast(`⚠️ ¡CUIDADO: ${this.state.obstacle.name}!`);
+                    else if(wc <= 6 && lvl > 5) this.toast("🔍 ¡TABLERO GIGANTE!", "alert");
+                    else this.toast("¡Encuéntralas todas!");
+                } else { setTimeout(()=>this.start(lvl), 50); }
+            } catch(e) { console.error(e); this.nav('view-menu'); }
+        }
+
+        genGrid(sz) {
+            const g = new Array(sz*sz).fill('');
+            const dirs = [[0,1],[1,0],[1,1],[-1,1]]; if(sz>10) dirs.push([0,-1],[-1,0]);
+            const all = [...this.state.words, ...this.state.hidden].sort((a,b)=>b.length-a.length);
+            for(let w of all) {
+                let ok=false, t=0;
+                while(!ok && t++<250) {
+                    const d = dirs[Math.floor(Math.random()*dirs.length)];
+                    const r = Math.floor(Math.random()*sz), c = Math.floor(Math.random()*sz);
+                    if(r+(w.length-1)*d[0]>=0 && r+(w.length-1)*d[0]<sz && c+(w.length-1)*d[1]>=0 && c+(w.length-1)*d[1]<sz) {
+                        let fit=true;
+                        for(let i=0; i<w.length; i++) if(g[(r+i*d[0])*sz+(c+i*d[1])]!=='' && g[(r+i*d[0])*sz+(c+i*d[1])]!==w[i]) { fit=false; break; }
+                        if(fit) { for(let i=0; i<w.length; i++) g[(r+i*d[0])*sz+(c+i*d[1])] = w[i]; ok=true; }
+                    }
+                }
+                if(!ok && this.state.words.includes(w)) return false;
+            }
+            const abc = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+            for(let i=0; i<g.length; i++) if(g[i]==='') g[i] = abc[Math.floor(Math.random()*abc.length)];
+            this.state.grid=g; this.state.sz=sz; this.draw(sz);
+            return true;
+        }
+
+        draw(sz) {
+            const b = this.dom.board; b.innerHTML = ''; b.style.setProperty('--cols', sz);
+            const frag = document.createDocumentFragment();
+            this.state.grid.forEach((ch,i) => {
+                const d = document.createElement('div'); d.className = 'cell'; d.innerText = ch; d.dataset.i = i;
+                d.onpointerdown = (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); this.startSel(Math.floor(i/sz), i%sz); };
+                d.onpointerenter = () => { if(this.state.sel.on) this.moveSel(Math.floor(i/sz), i%sz); };
+                frag.appendChild(d);
+            });
+            b.onpointermove = (e) => {
+                if(!this.state.sel.on) return;
+                const el = document.elementFromPoint(e.clientX, e.clientY);
+                if(el?.dataset.i) this.moveSel(Math.floor(parseInt(el.dataset.i)/sz), parseInt(el.dataset.i)%sz);
+            };
+            b.appendChild(frag);
+        }
+
+        startSel(r,c) { AudioSys.init(); this.state.sel={on:true, s:{r,c}, c:{r,c}}; this.paint(); }
+        moveSel(r,c) { if(this.state.sel.c.r!==r || this.state.sel.c.c!==c) { this.state.sel.c={r,c}; this.paint(); } }
+        paint() {
+            document.querySelectorAll('.cell.selecting').forEach(e=>e.classList.remove('selecting'));
+            const p = this.getPath(); if(p) p.forEach(k => this.dom.board.children[k].classList.add('selecting'));
+        }
+        endSel() {
+            if(!this.state.sel.on) return;
+            this.state.sel.on = false;
+            const p = this.getPath();
+            let found = false;
+            if(p) {
+                const s = p.map(k => this.state.grid[k]).join('');
+                const rs = s.split('').reverse().join('');
+                found = this.check(s, p) || this.check(rs, p);
+            }
+            document.querySelectorAll('.cell.selecting').forEach(e=>e.classList.remove('selecting'));
+            if(!found) { AudioSys.error(); this.dom.board.classList.add('shake'); setTimeout(()=>this.dom.board.classList.remove('shake'),400); }
+        }
+
+        getPath() {
+            const {s, c} = this.state.sel; if(!s||!c) return null;
+            const dr=c.r-s.r, dc=c.c-s.c;
+            if(s.r===c.r || s.c===c.c || Math.abs(dr)===Math.abs(dc)) {
+                const len = Math.max(Math.abs(dr), Math.abs(dc)); if(len===0) return [s.r*this.state.sz+s.c];
+                const rd=dr/len, cd=dc/len, arr=[];
+                for(let i=0; i<=len; i++) arr.push(Math.round(s.r+i*rd)*this.state.sz + Math.round(s.c+i*cd));
+                return arr;
+            } return null;
+        }
+
+        pauseTimer() {
+            this.state.timerPaused = true;
+            this.dom.timerBox.classList.add('paused');
+            AudioSys.tickTock(); 
+            setTimeout(() => {
+                if(document.getElementById('view-game').style.display === 'flex') {
+                    this.state.timerPaused = false;
+                    this.dom.timerBox.classList.remove('paused');
+                }
+            }, 3000);
+        }
+
+        check(w, p) {
+            if(this.state.words.includes(w) && !this.state.found.includes(w)) {
+                this.state.found.push(w);
+                const col = this.state.wCols[w];
+                p.forEach(k => {
+                    const el = this.dom.board.children[k]; 
+                    el.classList.add('found'); 
+                    el.style.setProperty('background', col, 'important');
+                    el.style.setProperty('border-color', col, 'important');
+                });
+                this.updUI(); AudioSys.found();
+                if(this.state.found.length === this.state.words.length) this.win();
+                return true;
+            }
+            if(this.state.hidden.includes(w)) {
+                this.state.hidden = this.state.hidden.filter(h=>h!==w);
+                p.forEach(k => this.dom.board.children[k].classList.add('secret'));
+                this.toast(`⏱️ PAUSA BONUS: ${w}`, 'secret');
+                this.pauseTimer(); 
+                return true;
+            }
+            return false;
+        }
+
+        updUI() {
+            document.getElementById('left-cnt').innerText = this.state.words.length - this.state.found.length;
+            const c = this.dom.chips; c.innerHTML = '';
+            if(this.state.words.length > 15) c.classList.add('dense'); else c.classList.remove('dense');
+            this.state.words.forEach(w => {
+                const d = this.state.found.includes(w);
+                const ch = document.createElement('div'); 
+                ch.className = `chip ${d?'done':''}`; 
+                ch.innerText = w;
+                c.appendChild(ch);
+            });
+        }
+
+        runTimer() {
+            clearInterval(this.state.int);
+            this.state.int = setInterval(() => {
+                if(!this.state.timerPaused) {
+                    this.state.timer++;
+                    const m=Math.floor(this.state.timer/60).toString().padStart(2,'0');
+                    const s=(this.state.timer%60).toString().padStart(2,'0');
+                    document.getElementById('timer-box').innerText = `${m}:${s}`;
+                }
+            }, 1000);
+        }
+
+        win() {
+            clearInterval(this.state.int); 
+            AudioSys.win();
+            this.launchConfetti();
+            let st=1; if(this.state.timer<=this.state.targetTime) st=3; else if(this.state.timer<=this.state.targetTime*1.5) st=2;
+            const k=`${this.state.cat}_${this.state.lvl}`; 
+            if(st > (this.state.stars[k]||0)) { 
+                this.state.stars[k] = st; 
+                localStorage.setItem('sl_v14_stars', JSON.stringify(this.state.stars)); 
+            }
+            const currentBest = this.state.times[k] || 999999;
+            if(this.state.timer < currentBest) {
+                this.state.times[k] = this.state.timer;
+                localStorage.setItem('sl_v14_times', JSON.stringify(this.state.times));
+            }
+            const nxt = this.state.lvl + 1; 
+            if(nxt > (this.state.prog[this.state.cat]||1)) { 
+                this.state.prog[this.state.cat] = nxt; 
+                localStorage.setItem('sl_v14_prog', JSON.stringify(this.state.prog)); 
+            }
+            const starHtml = '★'.repeat(st) + '<span class="star-e">' + '★'.repeat(3-st) + '</span>';
+            document.getElementById('m-stars').innerHTML = starHtml;
+            document.getElementById('m-time').innerText = document.getElementById('timer-box').innerText;
+            this.dom.modal.style.display='flex';
+        }
+        next() { this.dom.modal.style.display='none'; if(this.state.lvl>=100) this.nav('view-menu'); else this.start(this.state.lvl+1); }
+        toast(msg, type='') {
+            const t = this.dom.toast; t.innerText = msg; t.className = `toast show ${type}`;
+            setTimeout(()=>t.classList.remove('show'), 3000);
+        }
+    }
+
+    window.onload = () => { 
+        try{ 
+            window.app = new App(); 
+            AudioSys.init(); 
+            Leaderboard.init();
+            UserProfile.init();
+
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                splash.classList.add('fade-out');
+                
+                // VERIFICAR SI ES PRIMERA VEZ
+                if(!UserProfile.data) {
+                    document.getElementById('modal-setup').style.display = 'flex';
+                }
+
+            }, 5000); 
+
+        } catch(e) { 
+            alert("Error: "+e); 
+        } 
+    };
+</script>
+</body>
+</html>
+

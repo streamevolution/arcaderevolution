@@ -1,0 +1,275 @@
+/* --- Variables de diseño --- */
+:root {
+    --primary-color: #7B00FF; /* Púrpura brillante */
+    --secondary-color: #00FFEE; /* Turquesa neón */
+    --text-color: #E0E0E0;
+    --background-dark: #1A0033; /* Fondo oscuro casi negro */
+    --card-bg: rgba(255, 255, 255, 0.08); /* Fondo de tarjeta translúcido */
+    --card-border: rgba(255, 255, 255, 0.15);
+    --hover-shadow: 0 0 25px var(--secondary-color);
+}
+
+/* --- Reset & Base --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Orbitron', sans-serif; /* Fuente futurista */
+}
+
+body {
+    background-color: var(--background-dark);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden; /* Evitar scroll horizontal por animaciones */
+    position: relative; /* Para el fondo de estrellas */
+}
+
+/* --- Fondo de estrellas animado --- */
+#stars-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    z-index: -1;
+    overflow: hidden;
+}
+
+#stars-background::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, #ffffff 1px, transparent 1px);
+    background-size: 100px 100px; /* Tamaño de las estrellas */
+    animation: moveStars 120s linear infinite; /* Animación de movimiento */
+    opacity: 0.3;
+}
+
+@keyframes moveStars {
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: 10000px 10000px;
+    }
+}
+
+
+/* --- Header --- */
+header {
+    text-align: center;
+    margin: 30px 15px;
+    animation: fadeInDown 1s ease-out; /* Animación de entrada */
+}
+
+.header-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    animation: bounce 2s infinite ease-in-out; /* Icono con rebote */
+}
+
+header h1 {
+    font-family: 'Press Start 2P', cursive; /* Fuente retro */
+    font-size: 1.8rem; /* Ajuste para móvil */
+    margin-bottom: 5px;
+    color: var(--secondary-color);
+    text-shadow: 0 0 10px var(--secondary-color), 0 0 20px var(--primary-color);
+    letter-spacing: 2px;
+}
+
+header p {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+/* --- Contenedor de Juegos (Mobile-First) --- */
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Una columna por defecto para móviles */
+    gap: 20px;
+    width: 95%; /* Más ancho en móvil */
+    max-width: 400px; /* Ancho máximo para el grid en móviles */
+    padding: 0 10px;
+    margin-bottom: 40px;
+}
+
+/* --- Diseño de la Tarjeta --- */
+.card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px); /* Blur más pronunciado */
+    border: 1px solid var(--card-border);
+    border-radius: 25px; /* Bordes más redondeados */
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative; /* Para el brillo */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* Efecto Brillo al pasar el ratón */
+.card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    transform: rotate(45deg);
+    transition: transform 0.5s ease-out;
+    opacity: 0;
+    z-index: 0;
+}
+
+.card:hover::before {
+    transform: rotate(45deg) translate(20px, 20px);
+    opacity: 1;
+}
+
+/* Efecto Hover en la tarjeta */
+.card:hover {
+    transform: translateY(-8px) scale(1.02); /* Suave levantamiento y pequeño escalado */
+    box-shadow: var(--hover-shadow);
+    border-color: var(--secondary-color);
+}
+
+.card-image {
+    width: 100%;
+    height: 150px; /* Altura fija para imagen en móvil */
+    object-fit: cover;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.card-content {
+    padding: 18px;
+    width: 100%;
+    position: relative; /* Para el z-index del brillo */
+    z-index: 1;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--secondary-color);
+    text-shadow: 0 0 8px rgba(0,255,255,0.5);
+}
+
+/* Botón Jugar */
+.btn-play {
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    padding: 12px 25px;
+    color: white;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: 90%; /* Ancho ajustado para móvil */
+    display: block;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.btn-play:hover {
+    transform: scale(1.05) translateY(-2px); /* Ligero rebote */
+    box-shadow: 0 0 20px var(--secondary-color), 0 0 30px var(--primary-color);
+}
+
+/* --- Footer --- */
+footer {
+    margin-top: auto;
+    padding: 20px;
+    font-size: 0.8rem;
+    opacity: 0.6;
+    text-align: center;
+}
+
+/* --- Media Queries para tablets y escritorio --- */
+@media (min-width: 600px) {
+    .grid-container {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Dos columnas o más */
+        max-width: 900px; /* Ancho máximo para tablets */
+        width: 90%;
+    }
+
+    header h1 {
+        font-size: 2.5rem;
+    }
+
+    header p {
+        font-size: 1rem;
+    }
+
+    .card-image {
+        height: 180px; /* Mayor altura en pantallas grandes */
+    }
+
+    .card-title {
+        font-size: 1.3rem;
+    }
+
+    .btn-play {
+        width: 80%; /* Más estrecho en pantallas grandes */
+    }
+}
+
+/* --- Keyframe Animations --- */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Animación de entrada para las tarjetas */
+.card.fade-in {
+    animation: cardFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Efecto de "clic" en la tarjeta */
+.card.clicked {
+    animation: clickBounce 0.3s ease-in-out;
+}
+
+@keyframes clickBounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}

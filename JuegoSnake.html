@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Snake Infinity - 50 Skins & Sonido</title>
+    <style>
+        :root {
+            --primary: #00f3ff;
+            --accent: #bc13fe;
+            --bg: #050510;
+            --success: #00ff88;
+            --font: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        /* Bloqueo global para evitar rebotes, excepto donde se permita explícitamente */
+        * { 
+            box-sizing: border-box; 
+            user-select: none; 
+            touch-action: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg);
+            color: #fff;
+            font-family: var(--font);
+            overflow: hidden;
+            height: 100vh; height: 100dvh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #screen-loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.8s ease-out;
+        }
+        
+        .loader-snake {
+            width: 50px; height: 50px;
+            border: 4px solid var(--primary);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px var(--primary);
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .creator-text {
+            position: absolute; bottom: 30px;
+            font-size: 0.9rem; color: #888;
+            letter-spacing: 1px;
+            animation: pulseText 2s infinite;
+        }
+        @keyframes pulseText { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+        /* --- GAME WRAPPER --- */
+        #game-wrapper {
+            position: relative;
+            width: 100%; max-width: 600px;
+            height: 100%; 
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start;
+            padding-top: 10px;
+        }
+
+        /* --- HUD --- */
+        .hud-container {
+            width: 95%; max-width: 500px;
+            display: flex; justify-content: space-between;
+            padding: 5px 0; z-index: 5; margin-bottom: 5px; flex-shrink: 0;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.08);
+            padding: 8px 12px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center; min-width: 80px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .stat-label { font-size: 0.65rem; color: #aaa; display: block; text-transform: uppercase; }
+        .stat-val { font-size: 1.2rem; font-weight: 800; color: #fff; }
+        .money-val { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+
+        .progress-bar {
+            width: 95%; height: 6px; background: #222;
+            margin-bottom: 10px; border-radius: 3px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;
+        }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); width: 0%; transition: width 0.3s ease-out; }
+
+        canvas {
+            background: #080810; border: 2px solid var(--primary);
+            border-radius: 4px; box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+            width: 95%; aspect-ratio: 1/1; max-width: 500px; 
+            max-height: 45vh; z-index: 1; display: block; flex-shrink: 1;
+        }
+
+        /* --- CONTROLS --- */
+        .controls-mobile {
+            display: none; position: relative; 
+            width: 180px; height: 180px;
+            margin-top: auto; margin-bottom: 80px; flex-shrink: 0;
+        }
+        @media (hover: none) and (pointer: coarse) { .controls-mobile { display: flex; } }
+        @media (max-height: 700px) { .controls-mobile { margin-bottom: 40px; transform: scale(0.9); } canvas { max-height: 40vh; } }
+        
+        .dpad-btn {
+            position: absolute; width: 60px; height: 60px;
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px; display: flex; align-items: center; justify-content: center; 
+            font-size: 28px; color: white; cursor: pointer; backdrop-filter: blur(4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.1s;
+        }
+        .dpad-btn:active { background: var(--primary); color: #000; transform: scale(0.95); }
+        .u { top: 0; left: 60px; } .d { bottom: 0; left: 60px; }
+        .l { top: 60px; left: 0; } .r { top: 60px; right: 0; }
+
+        /* --- SCREENS --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 16, 0.96); backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 20; transition: opacity 0.3s;
+        }
+        .hidden { opacity: 0; pointer-events: none; display: none !important; }
+
+        h1 {
+            font-size: 3.5rem; margin: 0 0 10px 0;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-style: italic; text-align: center; line-height: 1;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), #00a8ff);
+            border: none; padding: 18px 40px; color: #000; font-weight: 900; font-size: 1.2rem;
+            border-radius: 50px; margin: 8px; cursor: pointer;
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.3); text-transform: uppercase; width: 80%; max-width: 300px;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-sec { background: transparent; border: 2px solid rgba(255,255,255,0.3); color: #fff; box-shadow: none; }
+        .btn-shop { background: linear-gradient(45deg, #ff00aa, #bc13fe); color: #fff; }
+
+        /* --- SHOP --- */
+        .scroll-enabled, .scroll-enabled * { touch-action: pan-y !important; }
+        .shop-wrapper {
+            width: 95%; max-width: 500px; height: 65vh;
+            background: rgba(0,0,0,0.3); border-radius: 15px; padding: 10px;
+            margin-top: 20px; display: flex; flex-direction: column;
+            border: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 35;
+        }
+        .shop-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; 
+            overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+            padding: 5px 5px 60px 5px; flex: 1; height: 100%;
+        }
+        .shop-grid::-webkit-scrollbar { width: 8px; }
+        .shop-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        .shop-grid::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+
+        .skin-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center;
+            min-height: 150px; position: relative;
+        }
+        .skin-card.active { border-color: var(--success); background: rgba(0, 255, 136, 0.05); }
+        .skin-preview { width: 50px; height: 50px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); flex-shrink: 0; }
+        .skin-btn { padding: 10px 0; border-radius: 8px; border: none; font-weight: bold; width: 100%; margin-top: auto; cursor: pointer; touch-action: manipulation; }
+        .btn-buy { background: #fff; color: #000; }
+        .btn-equip { background: var(--primary); color: #000; }
+        .btn-equipped { background: var(--success); color: #000; }
+        .locked { opacity: 0.5; cursor: not-allowed; }
+        
+        .currency-badge {
+            position: absolute; top: 20px; right: 20px; font-size: 1.2rem; font-weight: bold; color: gold;
+            background: rgba(0,0,0,0.8); padding: 8px 16px; border-radius: 20px; border: 1px solid gold; z-index: 40;
+        }
+
+        .corner-btn {
+            position: absolute; top: 15px; right: 15px; width: 44px; height: 44px;
+            background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 50%;
+            color: #fff; font-weight: bold; cursor: pointer; z-index: 50;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        
+        .corner-btn-left {
+            position: absolute; top: 15px; left: 15px; width: 44px; height: 44px;
+            background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 50%;
+            color: #fff; font-weight: bold; cursor: pointer; z-index: 50;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="screen-loading">
+    <div class="loader-snake"></div>
+    <h1 style="font-size: 2rem; margin-bottom: 10px;">SNAKE<br>INFINITY</h1>
+    <div style="color: var(--primary); font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 100px;">CARGANDO RECURSOS...</div>
+    <div class="creator-text">Creado por Juan Zamora</div>
+</div>
+
+<div id="game-wrapper">
+    
+    <button class="corner-btn" onclick="game.togglePause()">II</button>
+    <button class="corner-btn-left" id="btn-sound-toggle" onclick="audioSys.toggle()">🔊</button>
+
+    <!-- HUD -->
+    <div class="hud-container">
+        <div class="stat-box">
+            <span class="stat-label">NIVEL</span>
+            <span class="stat-val" id="hud-level">1</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">PUNTOS</span>
+            <span class="stat-val" id="hud-score">0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">BANCO ($)</span>
+            <span class="stat-val money-val" id="hud-bank">0</span>
+        </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="hud-prog"></div></div>
+
+    <canvas id="gc" width="500" height="500"></canvas>
+
+    <!-- CONTROLES -->
+    <div class="controls-mobile">
+        <div class="dpad-btn u" onclick="game.input(0,-1)">▲</div>
+        <div class="dpad-btn l" onclick="game.input(-1,0)">◀</div>
+        <div class="dpad-btn r" onclick="game.input(1,0)">▶</div>
+        <div class="dpad-btn d" onclick="game.input(0,1)">▼</div>
+    </div>
+
+    <!-- MENU -->
+    <div id="screen-menu" class="screen hidden">
+        <h1>SNAKE<br>INFINITY</h1>
+        <p style="color:#aaa; letter-spacing:2px; margin-bottom:20px; font-size: 0.9rem;">EDICIÓN DEFINITIVA</p>
+        
+        <div style="margin-bottom:30px; text-align:center; background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; width:80%;">
+            <p style="margin:5px; color:gold; font-weight:bold; font-size:1.1rem;">BANCO: $<span id="menu-money">0</span></p>
+            <p style="margin:5px; color:var(--primary); font-size:0.9rem;">NIVEL MÁX: <span id="menu-max-lvl">1</span></p>
+        </div>
+
+        <button class="btn" onclick="game.startRun(1)">NUEVA PARTIDA</button>
+        <button class="btn btn-sec" id="btn-continue" onclick="game.continueRun()" style="display:none;">CONTINUAR (NIVEL <span id="cont-lvl"></span>)</button>
+        <button class="btn btn-shop" onclick="shop.open()">TIENDA</button>
+    </div>
+
+    <!-- SHOP -->
+    <div id="screen-shop" class="screen hidden">
+        <div class="currency-badge">$<span id="shop-money">0</span></div>
+        <h2 style="color: #bc13fe; margin-top: 40px; margin-bottom: 5px;">TIENDA (50 SKINS)</h2>
+        <div class="shop-wrapper">
+            <div class="shop-grid scroll-enabled" id="shop-container"></div>
+        </div>
+        <button class="btn btn-sec" onclick="shop.close()" style="margin-top:15px; width:auto; padding: 10px 30px;">VOLVER</button>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="screen-over" class="screen hidden">
+        <h2 style="color:#ff3333; font-size:3rem; margin-bottom: 10px;">GAME OVER</h2>
+        <p style="color:#aaa;">Ganancias:</p>
+        <h3 style="color:gold; font-size:2.5rem; margin:5px 0 20px 0;">+$<span id="over-earnings">0</span></h3>
+        <button class="btn" onclick="game.restartLevel()">REINTENTAR</button>
+        <button class="btn btn-sec" onclick="game.toMenu()">MENÚ</button>
+    </div>
+
+    <!-- PAUSE -->
+    <div id="screen-pause" class="screen hidden">
+        <h2>PAUSA</h2>
+        <button class="btn" onclick="game.resume()">CONTINUAR</button>
+        <button class="btn btn-sec" onclick="game.toMenu()">SALIR</button>
+    </div>
+
+</div>
+
+<script>
+/* --- AUDIO SYSTEM --- */
+const audioSys = {
+    ctx: null,
+    enabled: true,
+    
+    init() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+        } catch(e) { console.log("Audio no soportado"); }
+    },
+
+    toggle() {
+        this.enabled = !this.enabled;
+        document.getElementById('btn-sound-toggle').innerText = this.enabled ? '🔊' : '🔇';
+    },
+
+    play(type) {
+        if(!this.enabled || !this.ctx) return;
+        if(this.ctx.state === 'suspended') this.ctx.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        const t = this.ctx.currentTime;
+
+        if(type === 'eat') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, t);
+            osc.frequency.exponentialRampToValueAtTime(1000, t + 0.1);
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.linearRampToValueAtTime(0, t + 0.1);
+            osc.start(t); osc.stop(t + 0.1);
+        } 
+        else if(type === 'die') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, t);
+            osc.frequency.exponentialRampToValueAtTime(50, t + 0.4);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.linearRampToValueAtTime(0, t + 0.4);
+            osc.start(t); osc.stop(t + 0.4);
+        }
+        else if(type === 'level') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, t);
+            osc.frequency.setValueAtTime(880, t+0.1);
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.linearRampToValueAtTime(0, t+0.3);
+            osc.start(t); osc.stop(t+0.3);
+        }
+        else if(type === 'click') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, t);
+            gain.gain.setValueAtTime(0.05, t);
+            gain.gain.linearRampToValueAtTime(0, t+0.05);
+            osc.start(t); osc.stop(t+0.05);
+        }
+    }
+};
+
+/* --- SKIN DATABASE (50 SKINS) --- */
+const SKINS = [
+    // BÁSICOS (10)
+    { id: 'default', name: 'Neón Azul', price: 0, type: 'color', val: '#00f3ff' },
+    { id: 'green', name: 'Tóxica', price: 100, type: 'color', val: '#00ff00' },
+    { id: 'red', name: 'Carmesí', price: 200, type: 'color', val: '#ff0044' },
+    { id: 'orange', name: 'Magma', price: 300, type: 'color', val: '#ff5500' },
+    { id: 'purple', name: 'Vacío', price: 400, type: 'color', val: '#9900ff' },
+    { id: 'yellow', name: 'Limón', price: 500, type: 'color', val: '#ffff00' },
+    { id: 'white', name: 'Nieve', price: 600, type: 'color', val: '#ffffff' },
+    { id: 'pink', name: 'Chicle', price: 700, type: 'color', val: '#ff66b2' },
+    { id: 'teal', name: 'Agua', price: 800, type: 'color', val: '#008080' },
+    { id: 'grey', name: 'Piedra', price: 900, type: 'color', val: '#808080' },
+    
+    // PASTEL Y SUAVES (10)
+    { id: 'mint', name: 'Menta', price: 1200, type: 'color', val: '#98ff98' },
+    { id: 'lavender', name: 'Lavanda', price: 1300, type: 'color', val: '#e6e6fa' },
+    { id: 'peach', name: 'Melocotón', price: 1400, type: 'color', val: '#ffdab9' },
+    { id: 'sky', name: 'Cielo', price: 1500, type: 'color', val: '#87ceeb' },
+    { id: 'cream', name: 'Crema', price: 1600, type: 'color', val: '#fffdd0' },
+    { id: 'salmon', name: 'Salmón', price: 1700, type: 'color', val: '#fa8072' },
+    { id: 'olive', name: 'Oliva', price: 1800, type: 'color', val: '#808000' },
+    { id: 'navy', name: 'Marino', price: 1900, type: 'color', val: '#000080' },
+    { id: 'maroon', name: 'Vino', price: 2000, type: 'color', val: '#800000' },
+    { id: 'brown', name: 'Madera', price: 2100, type: 'color', val: '#8b4513' },
+
+    // EFECTOS SIMPLES (10)
+    { id: 'ghost', name: 'Fantasma', price: 3000, type: 'effect', val: 'ghost' },
+    { id: 'shadow', name: 'Sombra', price: 3200, type: 'color', val: '#333' }, // Oscuro casi negro
+    { id: 'police', name: 'Ley', price: 3500, type: 'effect', val: 'police' },
+    { id: 'zebra', name: 'Cebra', price: 3800, type: 'striped', val: '#fff' }, // Blanco/Negro
+    { id: 'bee', name: 'Abeja', price: 4000, type: 'striped', val: '#ffff00' }, // Amarillo/Negro
+    { id: 'candy', name: 'Caramelo', price: 4200, type: 'striped', val: '#ff00aa' }, // Rosa/Blanco
+    { id: 'blueprint', name: 'Plano', price: 4500, type: 'effect', val: 'outline' },
+    { id: 'glass', name: 'Cristal', price: 4800, type: 'effect', val: 'glass' },
+    { id: 'hacker', name: 'Terminal', price: 5000, type: 'effect', val: 'matrix' },
+    { id: 'glitch', name: 'Glitch', price: 5500, type: 'effect', val: 'glitch' },
+
+    // LUJO Y ELEMENTOS (10)
+    { id: 'silver', name: 'Plata', price: 6000, type: 'shiny', val: '#c0c0c0' },
+    { id: 'bronze', name: 'Bronce', price: 6500, type: 'shiny', val: '#cd7f32' },
+    { id: 'emerald', name: 'Esmeralda', price: 7000, type: 'shiny', val: '#50c878' },
+    { id: 'ruby', name: 'Rubí', price: 7500, type: 'shiny', val: '#e0115f' },
+    { id: 'sapphire', name: 'Zafiro', price: 8000, type: 'shiny', val: '#0f52ba' },
+    { id: 'amethyst', name: 'Amatista', price: 8500, type: 'shiny', val: '#9966cc' },
+    { id: 'fire', name: 'Fuego', price: 9000, type: 'effect', val: 'fire' },
+    { id: 'ice', name: 'Hielo', price: 9500, type: 'effect', val: 'ice' },
+    { id: 'earth', name: 'Tierra', price: 10000, type: 'effect', val: 'earth' },
+    { id: 'electric', name: 'Rayo', price: 12000, type: 'effect', val: 'electric' },
+
+    // LEGENDARIOS (10)
+    { id: 'rainbow', name: 'Fiesta', price: 15000, type: 'effect', val: 'rainbow' },
+    { id: 'disco', name: 'Disco', price: 18000, type: 'effect', val: 'disco' },
+    { id: 'cyber', name: 'Cyber', price: 20000, type: 'effect', val: 'cyber' },
+    { id: 'toxic', name: 'Radiactivo', price: 22000, type: 'effect', val: 'toxic' },
+    { id: 'galaxy', name: 'Galaxia', price: 25000, type: 'effect', val: 'galaxy' },
+    { id: 'plasma', name: 'Plasma', price: 28000, type: 'effect', val: 'plasma' },
+    { id: 'void', name: 'Vacío Puro', price: 35000, type: 'effect', val: 'void' },
+    { id: 'diamond', name: 'Diamante', price: 40000, type: 'shiny', val: '#b9f2ff' },
+    { id: 'gold', name: 'Rey Midas', price: 50000, type: 'shiny', val: '#ffd700' },
+    { id: 'infinity', name: 'Infinito', price: 100000, type: 'effect', val: 'infinity' }
+];
+
+/* --- GAME ENGINE --- */
+const GRID = 25;
+const TILE = 20; 
+const FOOD_REQ = 6; 
+const MAX_LEVELS = 1000;
+
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+
+const Game = {
+    state: 'LOADING', 
+    data: { bank: 0, maxLevel: 1, inventory: ['default'], equipped: 'default' },
+    snake: [], dir: {x:0, y:-1}, nextDir: {x:0, y:-1}, food: null,
+    score: 0, level: 1, eaten: 0, obstacles: [], particles: [],
+    speed: 150, lastTime: 0,
+
+    init() {
+        // Pantalla de carga
+        setTimeout(() => {
+            document.getElementById('screen-loading').style.opacity = 0;
+            setTimeout(() => {
+                document.getElementById('screen-loading').style.display = 'none';
+                this.state = 'MENU';
+                this.showScreen('screen-menu');
+            }, 800);
+        }, 2500);
+
+        // Cargar datos
+        const raw = localStorage.getItem('snakeInfData_v6');
+        if(raw) try { this.data = { ...this.data, ...JSON.parse(raw) }; } catch(e){}
+        
+        audioSys.init();
+        this.bindInput();
+        this.updateMenuUI();
+        
+        // Fix Scroll Tienda
+        const shopCont = document.getElementById('shop-container');
+        shopCont.addEventListener('touchmove', e => e.stopPropagation(), { passive: false });
+        
+        this.lastTime = performance.now();
+        requestAnimationFrame(t => this.loop(t));
+    },
+
+    saveData() {
+        localStorage.setItem('snakeInfData_v6', JSON.stringify(this.data));
+        this.updateMenuUI();
+    },
+
+    startRun(lvl) {
+        audioSys.play('click');
+        this.level = lvl;
+        this.score = 0;
+        this.startLevel();
+        this.showScreen(null); 
+        this.state = 'PLAY';
+    },
+
+    continueRun() {
+        this.startRun(this.data.maxLevel);
+    },
+
+    startLevel() {
+        this.snake = [{x:10, y:12}, {x:10, y:13}, {x:10, y:14}];
+        this.dir = {x:0, y:-1};
+        this.nextDir = {x:0, y:-1};
+        this.eaten = 0;
+        const reduction = Math.min(110, Math.floor(this.level * 0.8)); 
+        this.speed = Math.max(30, 140 - reduction);
+        this.genObstacles();
+        this.spawnFood();
+        this.updateHUD();
+    },
+
+    genObstacles() {
+        this.obstacles = [];
+        if(this.level < 3) return;
+        const count = Math.min(45, Math.floor(this.level / 2) + 3);
+        for(let i=0; i<count; i++) {
+            let obj; let safe = false;
+            while(!safe) {
+                obj = {x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID)};
+                if(Math.abs(obj.x-10)>3 || Math.abs(obj.y-12)>3) { safe = true; this.obstacles.push(obj); }
+            }
+        }
+    },
+
+    spawnFood() {
+        let valid = false;
+        while(!valid) {
+            this.food = {x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID)};
+            if(!this.isCollision(this.food.x, this.food.y)) valid = true;
+        }
+    },
+
+    isCollision(x, y) {
+        if(x < 0 || x >= GRID || y < 0 || y >= GRID) return true;
+        if(this.snake.some(s => s.x === x && s.y === y)) return true;
+        if(this.obstacles.some(o => o.x === x && o.y === y)) return true;
+        return false;
+    },
+
+    input(x, y) {
+        if(this.state !== 'PLAY') return;
+        if(this.dir.x + x === 0 && this.dir.y + y === 0) return;
+        this.nextDir = {x,y};
+    },
+
+    update(dt) {
+        this.particles = this.particles.filter(p => p.life > 0);
+        this.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.05; });
+
+        if(this.lastTime + this.speed > dt) return;
+        this.lastTime = dt;
+
+        this.dir = this.nextDir;
+        const head = this.snake[0];
+        const next = {x: head.x + this.dir.x, y: head.y + this.dir.y};
+
+        if(this.isCollision(next.x, next.y)) { this.gameOver(); return; }
+
+        this.snake.unshift(next);
+        if(next.x === this.food.x && next.y === this.food.y) {
+            this.eat();
+        } else {
+            this.snake.pop();
+        }
+    },
+
+    eat() {
+        audioSys.play('eat');
+        this.score += 10 + this.level; 
+        this.eaten++;
+        // Partículas
+        const skin = SKINS.find(s => s.id === this.data.equipped) || SKINS[0];
+        const color = (skin.val.startsWith('#')) ? skin.val : '#fff';
+        for(let i=0; i<8; i++) {
+            this.particles.push({
+                x: this.food.x*TILE + TILE/2, y: this.food.y*TILE + TILE/2,
+                vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, life: 1, color: color
+            });
+        }
+
+        if(this.eaten >= FOOD_REQ) this.levelUp();
+        else { this.spawnFood(); this.updateHUD(); }
+    },
+
+    levelUp() {
+        audioSys.play('level');
+        this.level++;
+        if(this.level > this.data.maxLevel) this.data.maxLevel = this.level;
+        this.data.bank += this.score;
+        this.score = 0; 
+        this.saveData();
+        if(this.level > MAX_LEVELS) { alert("¡COMPLETASTE LOS 1000 NIVELES!"); this.toMenu(); }
+        else this.startLevel();
+    },
+
+    gameOver() {
+        audioSys.play('die');
+        this.state = 'OVER';
+        this.data.bank += this.score;
+        document.getElementById('over-earnings').innerText = this.score;
+        this.saveData();
+        this.showScreen('screen-over');
+    },
+
+    loop(t) {
+        if(this.state === 'PLAY') { this.update(t); this.draw(); }
+        requestAnimationFrame(tm => this.loop(tm));
+    },
+
+    draw() {
+        ctx.fillStyle = '#050510'; ctx.fillRect(0,0,canvas.width, canvas.height);
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+        for(let i=0; i<=GRID; i++) {
+            ctx.beginPath(); ctx.moveTo(i*TILE, 0); ctx.lineTo(i*TILE, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i*TILE); ctx.lineTo(canvas.width, i*TILE); ctx.stroke();
+        }
+        // Obstáculos
+        ctx.fillStyle = '#333'; ctx.strokeStyle = '#555';
+        this.obstacles.forEach(o => { ctx.fillRect(o.x*TILE, o.y*TILE, TILE, TILE); ctx.strokeRect(o.x*TILE, o.y*TILE, TILE, TILE); });
+        // Comida
+        ctx.shadowBlur = 15; ctx.shadowColor = '#ff00aa'; ctx.fillStyle = '#ff00aa';
+        ctx.beginPath(); ctx.arc(this.food.x*TILE + TILE/2, this.food.y*TILE + TILE/2, TILE/2 - 2, 0, Math.PI*2); ctx.fill();
+        
+        this.drawSnake();
+
+        // Partículas
+        this.particles.forEach(p => {
+            ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    },
+
+    drawSnake() {
+        const skin = SKINS.find(s => s.id === this.data.equipped) || SKINS[0];
+        const t = Date.now();
+        
+        this.snake.forEach((seg, i) => {
+            const x = seg.x*TILE; const y = seg.y*TILE;
+            ctx.shadowBlur = i===0 ? 15 : 5;
+            
+            // Lógica Visual de Skins (Simplificada para Canvas)
+            let fill = '#fff';
+            let shadow = '#fff';
+
+            if(skin.type === 'color') { fill = skin.val; shadow = skin.val; }
+            else if(skin.type === 'shiny') {
+                fill = skin.val; shadow = '#fff';
+                if(Math.random()>0.9) fill = '#fff';
+            }
+            else if(skin.id === 'ghost') { fill = '#00ffff'; shadow = '#00ffff'; ctx.globalAlpha = 0.4; }
+            else if(skin.id === 'police') { fill = (t/150%2>1)?'#f00':'#00f'; shadow = fill; }
+            else if(skin.id === 'rainbow') { fill = `hsl(${(i*20+t/5)%360},100%,50%)`; shadow = fill; }
+            else if(skin.type === 'striped') { fill = (i%2===0)?skin.val:'#333'; shadow = skin.val; }
+            else if(skin.val === 'matrix') { fill = '#0f0'; shadow = '#0f0'; ctx.fillRect(x+4,y+4,TILE-8,TILE-8); return; }
+            else if(skin.val === 'fire') { fill = `hsl(${10 + Math.random()*30}, 100%, 50%)`; shadow = '#f00'; }
+            else if(skin.val === 'ice') { fill = `hsl(${180 + Math.random()*30}, 100%, 80%)`; shadow = '#0ff'; }
+            else { fill = '#aaa'; shadow = '#aaa'; } // Fallback
+
+            ctx.fillStyle = fill; ctx.shadowColor = shadow;
+            
+            // Outline effect
+            if(skin.val === 'outline') { ctx.strokeStyle = '#00f3ff'; ctx.lineWidth=2; ctx.strokeRect(x+2,y+2,TILE-4,TILE-4); }
+            else { this.drawRoundRect(x+1, y+1, TILE-2, TILE-2, 4); ctx.fill(); }
+            
+            ctx.globalAlpha = 1;
+            if(i===0) { ctx.fillStyle = '#fff'; ctx.shadowBlur = 0; ctx.fillRect(x+TILE/2-2, y+TILE/2-2, 4, 4); }
+        });
+    },
+
+    drawRoundRect(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+        ctx.beginPath(); ctx.moveTo(x+r, y); ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+        ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath();
+    },
+
+    updateHUD() {
+        document.getElementById('hud-score').innerText = this.score;
+        document.getElementById('hud-level').innerText = this.level;
+        document.getElementById('hud-bank').innerText = this.data.bank + this.score;
+        document.getElementById('hud-prog').style.width = ((this.eaten/FOOD_REQ)*100) + '%';
+    },
+    updateMenuUI() {
+        document.getElementById('menu-money').innerText = this.data.bank;
+        document.getElementById('menu-max-lvl').innerText = this.data.maxLevel;
+        if(this.data.maxLevel > 1) {
+            document.getElementById('btn-continue').style.display = 'inline-block';
+            document.getElementById('cont-lvl').innerText = this.data.maxLevel;
+        }
+    },
+    bindInput() {
+        document.addEventListener('keydown', e => {
+            if(e.key === 'Escape') this.togglePause();
+            if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+            if(this.state === 'PLAY') {
+                if(e.key === 'ArrowUp') this.input(0,-1); if(e.key === 'ArrowDown') this.input(0,1);
+                if(e.key === 'ArrowLeft') this.input(-1,0); if(e.key === 'ArrowRight') this.input(1,0);
+            }
+        });
+    },
+    togglePause() { 
+        audioSys.play('click');
+        if(this.state==='PLAY'){this.state='PAUSE';this.showScreen('screen-pause');}
+        else if(this.state==='PAUSE')this.resume();
+    },
+    resume() { 
+        audioSys.play('click');
+        this.state='PLAY'; this.showScreen(null); this.lastTime=performance.now(); 
+    },
+    restartLevel() { this.startRun(this.level); },
+    toMenu() { 
+        audioSys.play('click');
+        this.saveData(); this.updateMenuUI(); this.state='MENU'; this.showScreen('screen-menu'); 
+    },
+    showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        if(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).style.display='flex'; }
+    }
+};
+
+/* --- SHOP LOGIC --- */
+const Shop = {
+    open() {
+        audioSys.play('click');
+        const container = document.getElementById('shop-container');
+        container.innerHTML = '';
+        document.getElementById('shop-money').innerText = Game.data.bank;
+
+        SKINS.forEach(skin => {
+            const isOwned = Game.data.inventory.includes(skin.id);
+            const isEquipped = Game.data.equipped === skin.id;
+            const canAfford = Game.data.bank >= skin.price;
+            const card = document.createElement('div');
+            card.className = `skin-card ${isEquipped?'active':''}`;
+            
+            let bg = skin.val;
+            if(skin.type === 'shiny') bg = 'linear-gradient(45deg, '+skin.val+', white)';
+            else if(skin.val === 'rainbow') bg = 'linear-gradient(90deg, red, orange, yellow, green, blue, violet)';
+            else if(!bg.startsWith('#')) bg = '#444'; 
+
+            card.innerHTML = `<div class="skin-preview" style="background: ${bg};"></div>
+                <div style="font-weight:bold; margin-bottom:4px;">${skin.name}</div>
+                <div style="font-size:0.8rem; color:#aaa;">${isOwned ? 'Adquirido' : '$'+skin.price}</div>`;
+
+            const btn = document.createElement('button');
+            btn.className = 'skin-btn';
+            if(isEquipped) { btn.innerText="EN USO"; btn.classList.add('btn-equipped'); }
+            else if(isOwned) { btn.innerText="USAR"; btn.classList.add('btn-equip'); btn.onclick=()=>this.equip(skin.id); }
+            else { 
+                btn.innerText="COMPRAR"; 
+                if(canAfford){ btn.classList.add('btn-buy'); btn.onclick=()=>this.buy(skin); }
+                else { btn.classList.add('locked'); btn.disabled=true; }
+            }
+            card.appendChild(btn); container.appendChild(card);
+        });
+        Game.showScreen('screen-shop');
+    },
+    buy(skin) {
+        if(Game.data.bank >= skin.price) {
+            audioSys.play('level'); // Sonido éxito
+            Game.data.bank -= skin.price;
+            Game.data.inventory.push(skin.id);
+            Game.saveData(); this.open(); 
+        }
+    },
+    equip(id) { audioSys.play('click'); Game.data.equipped = id; Game.saveData(); this.open(); },
+    close() { Game.toMenu(); }
+};
+
+window.game = Game; window.shop = Shop; window.audioSys = audioSys;
+window.onload = () => Game.init();
+
+</script>
+</body>
+</html>
+
