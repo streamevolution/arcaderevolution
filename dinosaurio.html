@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dino Runner: Mythic Grind (Con Sonido)</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+    
+    body { margin: 0; background: #222; overflow: hidden; font-family: 'Fredoka One', cursive; touch-action: none; }
+    
+    #game-container { 
+        position: relative; width: 100%; height: 100dvh; 
+        background: linear-gradient(to bottom, #4FC3F7, #E1F5FE); 
+        overflow: hidden; 
+        transition: background 2s ease;
+    }
+    
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* UI SUPERIOR */
+    .ui-layer { 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+        pointer-events: none; padding: 15px; box-sizing: border-box; 
+        display: flex; flex-direction: column; justify-content: space-between; z-index: 5;
+    }
+
+    .hud-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+    
+    .mission-box {
+        background: rgba(0, 0, 0, 0.6); color: white; padding: 10px 20px;
+        border-radius: 15px; border: 2px solid rgba(255,255,255,0.3);
+        backdrop-filter: blur(4px); box-shadow: 0 4px 6px rgba(0,0,0,0.2); flex-grow: 1; margin-right: 10px;
+    }
+    
+    .currency-container {
+        display: flex; flex-direction: column; gap: 5px; align-items: flex-end;
+    }
+
+    .coin-box {
+        background: rgba(255, 215, 0, 0.9); color: #B71C1C; padding: 5px 15px;
+        border-radius: 50px; font-size: 18px; box-shadow: 0 3px 0 #E65100; border: 2px solid #FFF; min-width: 80px; text-align: right;
+    }
+
+    .diamond-box {
+        background: rgba(0, 229, 255, 0.9); color: #01579B; padding: 5px 15px;
+        border-radius: 50px; font-size: 18px; box-shadow: 0 3px 0 #0277BD; border: 2px solid #FFF; min-width: 80px; text-align: right;
+    }
+
+    .progress-bar-bg { width: 100%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; margin-top: 5px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #00E676; width: 0%; transition: width 0.2s; }
+
+    /* PANTALLA DE CARGA */
+    #loadingScreen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: #212121; z-index: 9999;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        color: white; transition: opacity 0.5s ease;
+    }
+    .loader {
+        border: 8px solid #f3f3f3; border-top: 8px solid #FF5722; border-radius: 50%;
+        width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* MENUS */
+    .menu-screen { 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.85); 
+        display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        color: white; pointer-events: auto; z-index: 10; 
+        backdrop-filter: blur(5px); transition: opacity 0.3s; 
+    }
+    .hidden { opacity: 0; pointer-events: none; }
+    
+    /* TIENDA */
+    .shop-grid { 
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); 
+        gap: 8px; margin-bottom: 15px; max-height: 50vh; overflow-y: auto; 
+        padding: 10px; width: 95%; max-width: 600px; 
+        background: rgba(255,255,255,0.1); border-radius: 15px; 
+    }
+    .shop-item { 
+        background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.1); 
+        padding: 8px; text-align: center; border-radius: 10px; 
+        cursor: pointer; font-size: 10px; transition: 0.2s; display: flex; flex-direction: column; justify-content: space-between; height: 70px;
+    }
+    .shop-item:active { transform: scale(0.95); }
+    .shop-item.locked { opacity: 0.5; filter: grayscale(0.9); }
+    .shop-item.selected { border-color: #FFD700; background: rgba(255, 215, 0, 0.2); }
+    
+    /* Estilo especial para items ULTRA */
+    .shop-item.ultra { 
+        border-color: #00E5FF; 
+        background: linear-gradient(45deg, rgba(0,229,255,0.1), rgba(101,31,255,0.1)); 
+        box-shadow: 0 0 10px #00E5FF; 
+    }
+
+    /* PREVIEW */
+    .detail-card {
+        background: #37474F; border-radius: 20px; padding: 20px;
+        width: 85%; max-width: 350px; text-align: center;
+        border: 4px solid #FFF; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        position: relative;
+    }
+    .preview-canvas-container {
+        width: 150px; height: 150px; margin: 0 auto 15px auto;
+        background: #263238; border-radius: 50%; border: 4px solid white;
+        overflow: hidden; position: relative;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .confirm-modal {
+        background: #D32F2F; color: white; padding: 20px; border-radius: 15px;
+        text-align: center; border: 3px solid white; width: 80%; max-width: 300px;
+    }
+
+    button { 
+        background: #FF5722; border: none; color: white; 
+        font-family: 'Fredoka One', cursive; font-size: 18px; 
+        padding: 12px 30px; cursor: pointer; margin: 5px; 
+        border-radius: 50px; box-shadow: 0 5px 0 #D84315; 
+        transition: transform 0.1s; 
+    }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #D84315; }
+    .btn-buy { background: #4CAF50; box-shadow: 0 5px 0 #2E7D32; }
+    .btn-ultra { background: #00E5FF; color: #006064; box-shadow: 0 5px 0 #0097A7; }
+    .btn-cancel { background: #607D8B; box-shadow: 0 5px 0 #455A64; }
+
+    /* ALERTA JEFE */
+    #bossAlert {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        font-size: 50px; color: #FF5252; text-shadow: 4px 4px 0 #000;
+        display: none; z-index: 100; pointer-events: none;
+        animation: flash 0.5s infinite;
+    }
+    @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+
+    .record-badge {
+        background: rgba(255, 215, 0, 0.2); border: 2px solid #FFD700; color: #FFD700;
+        padding: 10px 20px; border-radius: 30px; margin-bottom: 20px;
+        font-size: 20px; display: flex; align-items: center; gap: 10px;
+    }
+
+    /* MUTE TOGGLE */
+    #muteBtn {
+        position: absolute; top: 15px; right: 15px; z-index: 200;
+        background: rgba(0,0,0,0.5); border: 2px solid white; 
+        color: white; width: 40px; height: 40px; border-radius: 50%;
+        display: flex; justify-content: center; align-items: center; cursor: pointer;
+        font-size: 20px;
+    }
+
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+    <div class="loader"></div>
+    <h1 style="color:#FF5722; font-size:30px; margin:0;">CARGANDO...</h1>
+    <p style="color:#AAA; margin-top:20px; font-size:18px;">Creado por Juan Zamora</p>
+</div>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="bossAlert">¡JEFE A LA VISTA!</div>
+    <div id="muteBtn" onclick="toggleMute()">🔊</div>
+
+    <div class="ui-layer">
+        <div class="hud-top">
+            <div class="mission-box" id="missionBox">
+                <div id="levelText" style="font-size: 14px; color: #FFD700; margin-bottom: 2px;">NIVEL 1</div>
+                <div id="missionText" style="font-size: 16px;">Corre 100m</div>
+                <div class="progress-bar-bg"><div id="missionBar" class="progress-bar-fill"></div></div>
+            </div>
+            <div class="currency-container">
+                <div class="coin-box" id="coinDisplay">🪙 0</div>
+                <div class="diamond-box" id="diamondDisplay">💎 0</div>
+            </div>
+        </div>
+        <div id="powerIndicator" style="align-self: center; background: #E91E63; color: white; padding: 5px 15px; border-radius: 20px; opacity: 0; transition: opacity 0.5s;">PODER ACTIVO</div>
+    </div>
+
+    <div id="startScreen" class="menu-screen hidden">
+        <h1 style="color:#FFD700; font-size: 45px; margin-bottom:5px; text-align:center; text-shadow: 4px 4px 0 #E65100;">DINO LEGENDS</h1>
+        <div class="record-badge"><span>🏆</span> <span id="recordText">Récord: Nivel 1</span></div>
+        <button onclick="startGame()">¡A CORRER!</button>
+        <button onclick="openShop()" style="background: #00BCD4; box-shadow: 0 6px 0 #0097A7;">TIENDA (100+ SKINS)</button>
+    </div>
+
+    <div id="shopScreen" class="menu-screen hidden">
+        <h2 style="color: #FFD700;">COLECCIÓN</h2>
+        <div style="display:flex; gap:15px; margin-bottom:15px;">
+            <div id="shopBalanceCoin" style="color:gold; font-size:20px;">🪙 0</div>
+            <div id="shopBalanceDiamond" style="color:cyan; font-size:20px;">💎 0</div>
+        </div>
+        <div class="shop-grid" id="shopContainer"></div>
+        <button onclick="closeShop()" class="btn-cancel">VOLVER</button>
+    </div>
+
+    <div id="skinDetailScreen" class="menu-screen hidden">
+        <div class="detail-card">
+            <h2 id="previewName" style="margin:0 0 10px 0; color:#FFEB3B;">Nombre Dino</h2>
+            <div class="preview-canvas-container"><canvas id="previewCanvas" width="150" height="150"></canvas></div>
+            <div id="previewDesc" style="color:#DDD; font-size:14px; margin-bottom:10px;">Descripción</div>
+            <div id="previewPrice" style="font-size:24px; color:#FFD700; margin-bottom:15px;">🪙 500</div>
+            <button id="btnAction" class="btn-buy" onclick="handleSkinAction()">COMPRAR</button>
+            <button class="btn-cancel" onclick="closeDetail()">CERRAR</button>
+        </div>
+    </div>
+
+    <div id="confirmScreen" class="menu-screen hidden">
+        <div class="confirm-modal">
+            <h3>¿CONFIRMAR?</h3>
+            <p id="confirmText">Gastarás X</p>
+            <button id="btnConfirm" class="btn-buy" onclick="confirmPurchase()">SÍ, COMPRAR</button>
+            <button class="btn-cancel" onclick="closeConfirm()">CANCELAR</button>
+        </div>
+    </div>
+
+    <div id="gameOverScreen" class="menu-screen hidden">
+        <h1 style="color:#FF5252;">¡GAME OVER!</h1>
+        <div id="finalStats" style="font-size:22px; margin:20px; text-align: center;"></div>
+        <button onclick="startGame()">REINTENTAR</button>
+        <button onclick="openShop()" style="background: #00BCD4; box-shadow: 0 6px 0 #0097A7;">TIENDA</button>
+    </div>
+</div>
+
+<script>
+/* SISTEMA DE AUDIO */
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+let isMuted = false;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function toggleMute() {
+    isMuted = !isMuted;
+    document.getElementById('muteBtn').innerText = isMuted ? '🔇' : '🔊';
+}
+
+function playSound(type) {
+    if (isMuted || !audioCtx) return;
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const now = audioCtx.currentTime;
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    switch (type) {
+        case 'jump':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(400, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+        
+        case 'coin':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.setValueAtTime(1800, now + 0.05);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+            break;
+
+        case 'diamond':
+            // Sonido mágico brillante
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1000, now);
+            osc.frequency.linearRampToValueAtTime(2500, now + 0.2);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+            break;
+
+        case 'crash':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+            break;
+
+        case 'levelup':
+            // Arpegio de victoria
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => { // C Major
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.type = 'square';
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(0.08, now + i*0.08);
+                g.gain.exponentialRampToValueAtTime(0.01, now + i*0.08 + 0.2);
+                o.start(now + i*0.08);
+                o.stop(now + i*0.08 + 0.2);
+            });
+            break;
+    }
+}
+
+
+/* CONFIGURACIÓN GLOBAL */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const previewCanvas = document.getElementById('previewCanvas');
+const pCtx = previewCanvas.getContext('2d');
+let width, height;
+const GROUND_HEIGHT = 150;
+
+let game = { active: false, speed: 0, baseSpeed: 7, distance: 0, coins: 0, diamonds: 0, frames: 0, level: 1, isBossLevel: false };
+let mission = { type: 'distance', target: 100, current: 0, desc: "Corre 100m" };
+let savedData = JSON.parse(localStorage.getItem('dinoUltraSave')) || { 
+    totalCoins: 0, 
+    totalDiamonds: 5, // Regalo inicial
+    unlockedSkins: ['trex_green'], 
+    currentSkin: 'trex_green', 
+    maxLevel: 1 
+};
+
+const BIOMES = [
+    { sky: ['#4FC3F7', '#E1F5FE'], ground: '#5D4037', top: '#7CB342' }, // Campo
+    { sky: ['#FF9800', '#FFE0B2'], ground: '#E65100', top: '#FFB74D' }, // Desierto
+    { sky: ['#29B6F6', '#B3E5FC'], ground: '#0288D1', top: '#E1F5FE' }, // Hielo
+    { sky: ['#3E2723', '#212121'], ground: '#212121', top: '#D84315' }, // Volcan
+    { sky: ['#311B92', '#673AB7'], ground: '#424242', top: '#00E676' }  // Ciudad
+];
+let currentBiome = BIOMES[0];
+let selectedSkinId = null;
+let previewAnimationFrame = null;
+
+/* --- DIBUJO --- */
+const DRAW_FUNCS = {
+    trex: (ctx,x,y,w,h,c,d,a,k) => { let hy=k?y+h*0.4:y; ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.4,y+h*0.6,w*0.35,h*0.3,0,0,6.28);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.1,y+h*0.5);ctx.quadraticCurveTo(x-w*0.2,y+h*0.6,x+w*0.1,y+h*0.8);ctx.fill();ctx.beginPath();ctx.rect(x+w*0.6,hy,w*0.35,h*0.35);ctx.arc(x+w*0.95,hy+h*0.175,h*0.175,-1.57,1.57);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.8,hy+h*0.1,5,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.82,hy+h*0.1,2,0,6.28);ctx.fill();ctx.fillStyle=d;ctx.fillRect(x+w*0.65,hy+h*0.5,w*0.15,h*0.1); },
+    raptor: (ctx,x,y,w,h,c,d,a,k) => { let hy=k?y+h*0.5:y+h*0.1; ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.4,y+h*0.6,w*0.3,h*0.25,0,0,6.28);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.2,y+h*0.5);ctx.lineTo(x-w*0.2,y+h*0.2);ctx.lineTo(x+w*0.1,y+h*0.7);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.5,y+h*0.5);ctx.lineTo(x+w*0.7,hy+10);ctx.lineTo(x+w*0.5,y+h*0.7);ctx.fill();ctx.beginPath();ctx.ellipse(x+w*0.8,hy+10,w*0.2,h*0.15,0,0,6.28);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.85,hy+5,4,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.86,hy+5,2,0,6.28);ctx.fill();},
+    trice: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.45,y+h*0.65,w*0.45,h*0.3,0,0,6.28);ctx.fill();ctx.fillStyle=d;ctx.beginPath();ctx.arc(x+w*0.8,y+h*0.4,h*0.25,-1,2.5);ctx.fill();ctx.fillStyle='#EEE';ctx.beginPath();ctx.moveTo(x+w*0.9,y+h*0.3);ctx.lineTo(x+w+15,y+h*0.1);ctx.lineTo(x+w*0.9,y+h*0.4);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.75,y+h*0.4,4,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.77,y+h*0.4,2,0,6.28);ctx.fill();},
+    spino: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=d;ctx.beginPath();ctx.ellipse(x+w*0.45,y+h*0.6,w*0.35,h*0.4,0,3.14,0);ctx.fill();ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.45,y+h*0.65,w*0.4,h*0.25,0,0,6.28);ctx.fill();ctx.fillRect(x+w*0.7,y+h*0.35,w*0.35,h*0.15);ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.8,y+h*0.4,4,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.82,y+h*0.4,2,0,6.28);ctx.fill();},
+    ptero: (ctx,x,y,w,h,c,d,a,k) => { let fy=y+Math.sin(a*0.1)*10-20;if(k)fy+=30;ctx.fillStyle=d;let wo=Math.sin(a*0.3)*20;ctx.beginPath();ctx.moveTo(x+w*0.5,fy+h*0.5);ctx.lineTo(x+w*0.1,fy+h*0.2+wo);ctx.lineTo(x+w*0.9,fy+h*0.2+wo);ctx.fill();ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.5,fy+h*0.5,w*0.15,h*0.15,0,0,6.28);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.6,fy+h*0.4);ctx.lineTo(x+w*1.1,fy+h*0.5);ctx.lineTo(x+w*0.6,fy+h*0.6);ctx.fill();},
+    stego: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.5,y+h*0.6,w*0.45,h*0.35,0,0,6.28);ctx.fill();ctx.fillStyle=d;for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(x+w*0.2+i*10,y+h*0.3);ctx.lineTo(x+w*0.3+i*10,y+h*0.1);ctx.lineTo(x+w*0.4+i*10,y+h*0.3);ctx.fill();}ctx.fillStyle=c;ctx.beginPath();ctx.arc(x+w*0.9,y+h*0.7,10,0,6.28);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.92,y+h*0.68,3,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.93,y+h*0.68,1.5,0,6.28);ctx.fill();},
+    brachio:(ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.4,y+h*0.7,w*0.4,h*0.3,0,0,6.28);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.6,y+h*0.5);ctx.quadraticCurveTo(x+w*0.7,y-10,x+w*0.9,y);ctx.lineTo(x+w*0.8,y+h*0.6);ctx.fill();ctx.beginPath();ctx.ellipse(x+w*0.9,y,15,10,0,0,6.28);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.92,y-2,3,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.93,y-2,1.5,0,6.28);ctx.fill();},
+    anky: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.arc(x+w*0.5,y+h*0.7,w*0.45,3.14,0);ctx.fill();ctx.fillStyle=d;ctx.beginPath();ctx.arc(x+w*0.5,y+h*0.5,w*0.35,3.14,0);ctx.fill();ctx.fillStyle=c;ctx.beginPath();ctx.arc(x+w*0.9,y+h*0.7,12,0,6.28);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.92,y+h*0.68,3,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.93,y+h*0.68,1.5,0,6.28);ctx.fill();ctx.fillStyle=d;ctx.beginPath();ctx.arc(x,y+h*0.7,10,0,6.28);ctx.fill();},
+    para: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.4,y+h*0.6,w*0.35,h*0.3,0,0,6.28);ctx.fill();ctx.beginPath();ctx.rect(x+w*0.65,y+h*0.2,20,40);ctx.fill();ctx.fillStyle=d;ctx.beginPath();ctx.moveTo(x+w*0.75,y+h*0.2);ctx.quadraticCurveTo(x+w*0.5,y,x+w*0.4,y+h*0.3);ctx.lineTo(x+w*0.75,y+h*0.3);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.8,y+h*0.3,4,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.82,y+h*0.3,2,0,6.28);ctx.fill();},
+    dilo: (ctx,x,y,w,h,c,d,a,k) => { ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+w*0.4,y+h*0.6,w*0.35,h*0.3,0,0,6.28);ctx.fill();ctx.beginPath();ctx.moveTo(x+w*0.1,y+h*0.5);ctx.quadraticCurveTo(x-w*0.2,y+h*0.6,x+w*0.1,y+h*0.8);ctx.fill();ctx.beginPath();ctx.rect(x+w*0.6,y+h*0.2,w*0.3,h*0.3);ctx.fill();ctx.fillStyle=d;ctx.beginPath();ctx.arc(x+w*0.7,y+h*0.3,15,0,6.28);ctx.fill();ctx.fillStyle='white';ctx.beginPath();ctx.arc(x+w*0.8,y+h*0.3,4,0,6.28);ctx.fill();ctx.fillStyle='black';ctx.beginPath();ctx.arc(x+w*0.82,y+h*0.3,2,0,6.28);ctx.fill();}
+};
+
+/* GENERACIÓN SKINS */
+const SKINS = {};
+const DINO_TYPES = ['trex', 'raptor', 'trice', 'spino', 'ptero', 'stego', 'brachio', 'anky', 'para', 'dilo'];
+const COLORS = [
+    {n:'Green',c:'#4CAF50',d:'#2E7D32'}, {n:'Blue',c:'#2196F3',d:'#1565C0'}, {n:'Red',c:'#F44336',d:'#B71C1C'},
+    {n:'Purple',c:'#9C27B0',d:'#6A1B9A'}, {n:'Orange',c:'#FF9800',d:'#E65100'}, {n:'Gold',c:'#FFD700',d:'#FF6F00'},
+    {n:'Black',c:'#424242',d:'#000000'}, {n:'Pink',c:'#E91E63',d:'#880E4F'}, {n:'Teal',c:'#009688',d:'#004D40'},
+    {n:'Ice',c:'#B3E5FC',d:'#0288D1'}
+];
+const INFO = {
+    trex: {p:'none',d:'Equilibrado'}, raptor: {p:'jump',d:'Salto Triple'}, trice: {p:'shield',d:'Escudo'},
+    spino: {p:'score',d:'Puntos x1.5'}, ptero: {p:'magnet',d:'Imán'}, stego: {p:'score',d:'Puntos x1.5'},
+    brachio: {p:'shield',d:'Escudo'}, anky: {p:'shield',d:'Escudo'}, para: {p:'magnet',d:'Imán'}, dilo: {p:'jump',d:'Salto Triple'}
+};
+
+let skinCount=0;
+DINO_TYPES.forEach(type=>{COLORS.forEach(col=>{
+    let id=`${type}_${col.n.toLowerCase()}`; let price=skinCount*50; if(id==='trex_green')price=0;
+    SKINS[id]={id:id,name:`${type.toUpperCase()} ${col.n}`,type:type,color:col.c,detail:col.d,price:price,currency:'coin',power:INFO[type].p,desc:INFO[type].d};
+    skinCount++;
+});});
+
+/* SKINS ULTRA (DIAMANTES) */
+const ULTRAS = [
+    {id:'mecha_rex',name:'MECHA REX',type:'trex',c:'#607D8B',d:'#CFD8DC',price:600,p:'breaker',desc:'DEMOLER: Destruye obstáculos.'},
+    {id:'ghost_raptor',name:'SPECTRAL',type:'raptor',c:'#E0F2F1',d:'#80CBC4',price:1500,p:'ghost',desc:'FANTASMA: Intangible a veces.'},
+    {id:'midas_tri',name:'MIDAS',type:'trice',c:'#FFD700',d:'#FF6F00',price:3000,p:'alchemy',desc:'ALQUIMIA: Convierte obst. en monedas.'},
+    {id:'neon_dilo',name:'NEON',type:'dilo',c:'#1DE9B6',d:'#212121',price:5000,p:'dash',desc:'DASH: Velocidad y Puntos x5.'},
+    {id:'galactic_ptero',name:'GALACTIC',type:'ptero',c:'#311B92',d:'#E040FB',price:10000,p:'void',desc:'AGUJERO NEGRO: Atrae todo.'}
+];
+ULTRAS.forEach(u => {
+    SKINS[u.id] = {id:u.id, name:u.name, type:u.type, color:u.c, detail:u.d, price:u.price, currency:'diamond', power:u.p, desc:u.desc};
+});
+
+/* ENTIDADES */
+class Ground {
+    constructor() { this.textureOffset=0; }
+    update() { this.textureOffset -= game.speed; if(this.textureOffset <= -width) this.textureOffset=0; }
+    draw() {
+        ctx.fillStyle=currentBiome.ground; ctx.fillRect(0,height-GROUND_HEIGHT,width,GROUND_HEIGHT);
+        ctx.fillStyle=currentBiome.top; ctx.fillRect(0,height-GROUND_HEIGHT,width,20);
+        ctx.fillStyle='rgba(0,0,0,0.1)'; for(let i=0;i<width+100;i+=100){
+            let x=i+this.textureOffset%100;
+            while(x<width){ctx.beginPath();ctx.moveTo(x,height-GROUND_HEIGHT+20);ctx.lineTo(x-20,height);ctx.lineTo(x-10,height);ctx.lineTo(x+10,height-GROUND_HEIGHT+20);ctx.fill();x+=100;}
+        }
+    }
+}
+
+class Player {
+    constructor() {
+        this.w=60; this.h=60; this.x=50; this.y=0; this.vy=0; this.gravity=0.6;
+        this.groundY=height-GROUND_HEIGHT-this.h+10;
+        this.isGrounded=false; this.isDucking=false; this.jumps=0; this.maxJumps=2;
+        this.skinData=SKINS[savedData.currentSkin];
+        // Powers
+        this.hasShield=(this.skinData.power==='shield');
+        if(this.skinData.power==='jump'||this.skinData.power==='dash') this.maxJumps=3;
+        this.magnetRange = (this.skinData.power==='magnet')?300:(this.skinData.power==='void')?800:0;
+        this.breaker = (this.skinData.power==='breaker');
+        this.ghostTimer = 0;
+        
+        let pText = this.skinData.power==='none'?'':this.skinData.power.toUpperCase();
+        document.getElementById('powerIndicator').style.opacity = pText?1:0;
+        document.getElementById('powerIndicator').innerText = `PODER: ${pText}`;
+    }
+    update() {
+        this.vy+=this.gravity; this.y+=this.vy;
+        let landY=this.isDucking?this.groundY+20:this.groundY;
+        if(this.y>=landY){this.y=landY;this.vy=0;this.isGrounded=true;this.jumps=0;}else{this.isGrounded=false;}
+        
+        // Ghost Power
+        if(this.skinData.power==='ghost') {
+            this.ghostTimer++;
+            this.isGhost = (this.ghostTimer % 180 > 120); // Intangible 1 sec every 3 sec
+        }
+    }
+    draw() {
+        ctx.save();
+        if(this.isGhost) ctx.globalAlpha = 0.5;
+        ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(this.x+30,this.groundY+55,25,5,0,0,6.28); ctx.fill();
+        if(this.isGrounded && !this.isDucking) {
+            let lo=Math.sin(game.frames*0.3)*10; ctx.fillStyle=this.skinData.detail;
+            ctx.fillRect(this.x+20+lo,this.y+45,10,20); ctx.fillRect(this.x+40-lo,this.y+45,10,20);
+        }
+        DRAW_FUNCS[this.skinData.type](ctx,this.x,this.y,this.w,this.h,this.skinData.color,this.skinData.detail,game.frames,this.isDucking);
+        if(this.hasShield) { ctx.strokeStyle='#00E676';ctx.lineWidth=3;ctx.beginPath();ctx.arc(this.x+30,this.y+30,45,0,6.28);ctx.stroke(); }
+        ctx.restore();
+    }
+    jump(){
+        if(this.jumps<this.maxJumps){
+            this.vy=this.skinData.power==='jump'?-15:-13;
+            this.jumps++;
+            playSound('jump'); // SONIDO SALTO
+        }
+    }
+}
+
+class Boss {
+    constructor() { this.w=150; this.h=150; this.x=width-180; this.y=height-GROUND_HEIGHT-150; this.vy=2; this.timer=0; }
+    update() { this.y+=this.vy; if(this.y<50||this.y>height-GROUND_HEIGHT-150)this.vy*=-1; this.timer++; if(this.timer>60){this.timer=0; projectiles.push(new Projectile(this.x,this.y+50));} }
+    draw() { ctx.save(); ctx.fillStyle='#D32F2F';ctx.beginPath();ctx.ellipse(this.x+75,this.y+75,70,60,0,0,6.28);ctx.fill(); ctx.fillStyle='yellow';ctx.beginPath();ctx.arc(this.x+50,this.y+50,15,0,6.28);ctx.fill(); ctx.fillStyle='black';ctx.beginPath();ctx.moveTo(this.x+20,this.y+80);ctx.lineTo(this.x+80,this.y+90);ctx.lineTo(this.x+30,this.y+100);ctx.fill(); ctx.restore(); }
+}
+
+class Projectile {
+    constructor(x,y){this.x=x;this.y=y;this.w=30;this.h=30;this.del=false;this.speed=10+(game.level*0.1);}
+    update(){this.x-=this.speed;if(this.x<-50)this.del=true;}
+    draw(){ctx.fillStyle='#FF5722';ctx.beginPath();ctx.arc(this.x+15,this.y+15,15,0,6.28);ctx.fill();ctx.fillStyle='#FFEB3B';ctx.beginPath();ctx.arc(this.x+15,this.y+15,8,0,6.28);ctx.fill();}
+}
+
+class Obstacle {
+    constructor(t){this.x=width+50;this.type=t;this.del=false;this.w=50;this.h=50;this.y=height-GROUND_HEIGHT-this.h+10; if(t==='bird'){this.y-=(Math.random()>0.5?90:40);this.h=30;}else if(t==='cactus'){this.h=60+Math.random()*20;this.y=height-GROUND_HEIGHT-this.h+10;this.w=30;}}
+    update(){this.x-=game.speed;if(this.x<-100)this.del=true;}
+    draw(){
+        if(this.type==='cactus'){ctx.fillStyle='#2E7D32';ctx.beginPath();ctx.roundRect(this.x,this.y,this.w,this.h,10);ctx.fill();ctx.beginPath();ctx.roundRect(this.x-10,this.y+20,10,20,5);ctx.fill();}
+        else if(this.type==='rock'){ctx.fillStyle='#4E342E';ctx.beginPath();ctx.arc(this.x+25,this.y+25,25,0,6.28);ctx.fill();}
+        else{ctx.fillStyle='#D32F2F';let wy=this.y+Math.sin(game.frames*0.2)*15;ctx.beginPath();ctx.moveTo(this.x,this.y);ctx.lineTo(this.x+25,wy);ctx.lineTo(this.x+50,this.y);ctx.fill();ctx.beginPath();ctx.ellipse(this.x+25,this.y+5,15,8,0,0,6.28);ctx.fill();}
+    }
+}
+
+class Collectible {
+    constructor(type) {
+        this.type = type; // 'coin' or 'diamond'
+        this.x = width+Math.random()*300; 
+        this.y = height-GROUND_HEIGHT-30-Math.random()*100; 
+        this.del = false;
+    }
+    update() {
+        this.x -= game.speed;
+        // Magnet logic
+        if(player.magnetRange > 0) {
+            let dist = Math.hypot(player.x-this.x, player.y-this.y);
+            if(dist < player.magnetRange) { this.x += (player.x-this.x)*0.1; this.y += (player.y-this.y)*0.1; }
+        }
+        if(this.x < -50) this.del = true;
+    }
+    draw() {
+        ctx.save(); ctx.translate(this.x, this.y); 
+        let s = Math.sin(game.frames*0.1); ctx.scale(s<0?-1:1, 1);
+        if (this.type === 'coin') {
+            ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(0,0,15,0,6.28); ctx.fill();
+            ctx.strokeStyle='#F57F17'; ctx.lineWidth=3; ctx.stroke(); ctx.fillStyle='#FFF'; ctx.fillText('$',-4,5);
+        } else {
+            // Diamond
+            ctx.fillStyle='#00E5FF'; ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(12,0); ctx.lineTo(0,15); ctx.lineTo(-12,0); ctx.fill();
+            ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+/* LOGICA */
+let player, ground, obstacles=[], coins=[], projectiles=[], boss=null;
+
+window.onload = function() {
+    setTimeout(()=>{document.getElementById('loadingScreen').style.opacity='0';setTimeout(()=>{document.getElementById('loadingScreen').style.display='none';document.getElementById('startScreen').classList.remove('hidden');},500);},2000);
+    document.getElementById('recordText').innerText=`Récord: Nivel ${savedData.maxLevel}`; updateShopUI();
+};
+
+function init() {
+    resize(); window.addEventListener('resize', resize);
+    document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp')player.jump();if(e.code==='ArrowDown')player.isDucking=true;});
+    document.addEventListener('keyup',e=>{if(e.code==='ArrowDown')player.isDucking=false;});
+    let tY=0,lT=0;
+    canvas.addEventListener('touchstart',e=>{e.preventDefault();let n=new Date().getTime();if(n-lT<300)player.jump();else player.jump();lT=n;tY=e.touches[0].clientY;},{passive:false});
+    canvas.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches[0].clientY-tY>30)player.isDucking=true;},{passive:false});
+    canvas.addEventListener('touchend',()=>player.isDucking=false);
+}
+function resize(){width=document.getElementById('game-container').clientWidth;height=document.getElementById('game-container').clientHeight;canvas.width=width;canvas.height=height;if(player)player.groundY=height-GROUND_HEIGHT-player.h+10;}
+
+function setupLevel(lvl) {
+    if (lvl > 1) playSound('levelup'); // SONIDO NIVEL
+    
+    game.isBossLevel=(lvl%10===0);
+    let idx=Math.floor((lvl-1)/5)%BIOMES.length; currentBiome=BIOMES[idx];
+    document.getElementById('game-container').style.background=`linear-gradient(to bottom,${currentBiome.sky[0]},${currentBiome.sky[1]})`;
+    game.speed = game.baseSpeed + Math.min(lvl*0.02, 15);
+    if(player && player.skinData.power==='dash') game.speed += 3; // Dash speed
+
+    if(game.isBossLevel) {
+        mission={type:'survive', target:500+(lvl*10), current:0, desc:"¡SOBREVIVE!"};
+        boss=new Boss(); obstacles=[]; 
+        document.getElementById('missionBox').classList.add('boss-warning');
+        document.getElementById('bossAlert').style.display='block';
+        setTimeout(()=>document.getElementById('bossAlert').style.display='none',3000);
+    } else {
+        boss=null; document.getElementById('missionBox').classList.remove('boss-warning');
+        if(Math.random()<0.5) mission={type:'distance',target:100+(lvl*20),current:0,desc:`Corre ${100+(lvl*20)}m`};
+        else mission={type:'coins',target:5+Math.floor(lvl*0.5),current:0,desc:`Recoge ${5+Math.floor(lvl*0.5)} monedas`};
+    }
+    updateMissionUI();
+}
+function updateMissionUI(){
+    document.getElementById('levelText').innerText=`NIVEL ${game.level}`;
+    document.getElementById('missionText').innerText=mission.desc;
+    let p=(mission.current/mission.target)*100; if(p>100)p=100;
+    document.getElementById('missionBar').style.width=`${p}%`;
+}
+
+function startGame() {
+    initAudio(); // INICIAR AUDIO
+    game={active:true,speed:7,baseSpeed:7,distance:0,coins:0,diamonds:0,frames:0,level:1,isBossLevel:false};
+    setupLevel(1); player=new Player(); ground=new Ground(); obstacles=[]; coins=[]; projectiles=[];
+    document.querySelectorAll('.menu-screen').forEach(el=>el.classList.add('hidden'));
+    loop();
+}
+
+function loop() {
+    if(!game.active)return;
+    ctx.clearRect(0,0,width,height); game.frames++;
+    
+    let mult = player.skinData.power==='score'||player.skinData.power==='dash'?1.5:1;
+    game.distance+=game.speed*0.05*mult;
+
+    // Mision Check
+    if(mission.type==='survive') { mission.current++; if(mission.current>=mission.target){game.level++; projectiles=[]; setupLevel(game.level);} }
+    else if(mission.type==='distance') { mission.current=Math.floor(game.distance); if(mission.current>=mission.target){game.level++; setupLevel(game.level);} }
+    updateMissionUI();
+
+    ground.update(); ground.draw();
+
+    // SPAWNS
+    if(game.isBossLevel) { if(boss){boss.update();boss.draw();} } 
+    else {
+        let f=Math.max(30,120-game.level*0.1);
+        if(game.frames%Math.floor(f)===0) {
+            let r=Math.random(), t='cactus'; if(game.level>5&&r>0.6)t='rock'; if(game.level>10&&r>0.8)t='bird';
+            obstacles.push(new Obstacle(t));
+        }
+    }
+    // Spawn Coins & Diamonds
+    if(game.frames%80===0) coins.push(new Collectible('coin'));
+    if(game.frames%600===0) coins.push(new Collectible('diamond')); // Rare spawn
+
+    player.update(); player.draw();
+
+    // COLLISION LOGIC
+    obstacles.forEach((o,i)=>{
+        o.update(); o.draw();
+        let hh=player.isDucking?30:player.h;
+        if(!player.isGhost && player.x < o.x+o.w-10 && player.x+player.w-10 > o.x+10 && player.y < o.y+o.h-10 && player.y+hh > o.y+10) {
+            if(player.breaker) {
+                obstacles.splice(i,1); ctx.fillStyle='orange'; ctx.fillRect(0,0,width,height); // Smash effect
+                playSound('crash'); // Sonido choque (suave)
+            } else if(player.skinData.power==='alchemy') {
+                obstacles.splice(i,1); game.coins+=5; // Turn to coins
+                playSound('coin');
+                ctx.fillStyle='gold'; ctx.fillRect(0,0,width,height);
+            } else if(player.hasShield) {
+                player.hasShield=false; obstacles.splice(i,1); ctx.fillStyle='white'; ctx.fillRect(0,0,width,height);
+                playSound('crash');
+            } else {
+                gameOver();
+            }
+        }
+        if(o.del) obstacles.splice(i,1);
+    });
+
+    projectiles.forEach((p,i)=>{
+        p.update(); p.draw();
+        let hh=player.isDucking?30:player.h;
+        if(!player.isGhost && player.x < p.x+p.w-5 && player.x+player.w-5 > p.x+5 && player.y < p.y+p.h-5 && player.y+hh > p.y+5) {
+            if(player.hasShield){
+                player.hasShield=false; projectiles.splice(i,1); ctx.fillStyle='white'; ctx.fillRect(0,0,width,height);
+                playSound('crash');
+            }
+            else gameOver();
+        }
+        if(p.del) projectiles.splice(i,1);
+    });
+
+    coins.forEach((c,i)=>{
+        c.update(); c.draw();
+        if(Math.hypot(player.x-c.x, player.y-c.y+20)<50) {
+            if(c.type==='coin') {
+                game.coins++; 
+                playSound('coin'); // SONIDO MONEDA
+                if(mission.type==='coins') { mission.current++; if(mission.current>=mission.target){game.level++; setupLevel(game.level);} }
+            } else {
+                game.diamonds++;
+                playSound('diamond'); // SONIDO DIAMANTE
+            }
+            coins.splice(i,1);
+        }
+        if(c.del) coins.splice(i,1);
+    });
+
+    document.getElementById('coinDisplay').innerText = `🪙 ${savedData.totalCoins+game.coins}`;
+    document.getElementById('diamondDisplay').innerText = `💎 ${savedData.totalDiamonds+game.diamonds}`;
+    requestAnimationFrame(loop);
+}
+
+function gameOver() {
+    playSound('crash'); // SONIDO GAME OVER
+    game.active=false; 
+    savedData.totalCoins+=game.coins; 
+    savedData.totalDiamonds+=game.diamonds;
+    if(game.level>savedData.maxLevel) savedData.maxLevel=game.level;
+    localStorage.setItem('dinoUltraSave', JSON.stringify(savedData));
+    document.getElementById('recordText').innerText = `Récord: Nivel ${savedData.maxLevel}`;
+    document.getElementById('finalStats').innerHTML = `
+        Nivel: <span style="color:#00E676">${game.level}</span><br>
+        🪙 <span style="color:#FFD700">+${game.coins}</span><br>
+        💎 <span style="color:#00E5FF">+${game.diamonds}</span>
+    `;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+    updateShopUI();
+}
+
+/* TIENDA LÓGICA */
+function openShop() { updateShopUI(); document.getElementById('startScreen').classList.add('hidden'); document.getElementById('gameOverScreen').classList.add('hidden'); document.getElementById('shopScreen').classList.remove('hidden'); }
+function closeShop() { document.getElementById('shopScreen').classList.add('hidden'); document.getElementById('startScreen').classList.remove('hidden'); }
+function updateShopUI() {
+    document.getElementById('shopBalanceCoin').innerText = `🪙 ${savedData.totalCoins}`;
+    document.getElementById('shopBalanceDiamond').innerText = `💎 ${savedData.totalDiamonds}`;
+    const grid = document.getElementById('shopContainer'); grid.innerHTML = '';
+    Object.values(SKINS).forEach(skin => {
+        let unlocked = savedData.unlockedSkins.includes(skin.id);
+        let item = document.createElement('div');
+        item.className = `shop-item ${savedData.currentSkin===skin.id?'selected':''} ${!unlocked?'locked':''} ${skin.currency==='diamond'?'ultra':''}`;
+        let priceDisplay = skin.currency==='diamond' ? `💎 ${skin.price}` : `🪙 ${skin.price}`;
+        item.innerHTML = `<div style="font-weight:bold;color:${skin.color}">${skin.name}</div><div>${unlocked?'✅':priceDisplay}</div>`;
+        item.onclick = () => openPreview(skin);
+        grid.appendChild(item);
+    });
+}
+function openPreview(skin) {
+    selectedSkinId = skin.id;
+    document.getElementById('shopScreen').classList.add('hidden');
+    document.getElementById('skinDetailScreen').classList.remove('hidden');
+    document.getElementById('previewName').innerText = skin.name;
+    document.getElementById('previewName').style.color = skin.color;
+    document.getElementById('previewDesc').innerText = `Habilidad: ${skin.desc}`;
+    let unlocked = savedData.unlockedSkins.includes(skin.id);
+    let btn = document.getElementById('btnAction');
+    let priceTxt = document.getElementById('previewPrice');
+    
+    if(unlocked) {
+        priceTxt.innerText = "ADQUIRIDO"; btn.innerText = savedData.currentSkin===skin.id?"EQUIPADO":"EQUIPAR"; btn.className = "btn-buy"; btn.style.background = "#2196F3";
+    } else {
+        priceTxt.innerText = skin.currency==='diamond' ? `💎 ${skin.price}` : `🪙 ${skin.price}`; 
+        btn.innerText = "COMPRAR"; 
+        btn.className = skin.currency==='diamond' ? "btn-ultra" : "btn-buy";
+        btn.style.background = skin.currency==='diamond' ? "#00E5FF" : "#4CAF50";
+    }
+    if(previewAnimationFrame) cancelAnimationFrame(previewAnimationFrame);
+    let frame = 0;
+    function animatePreview() {
+        pCtx.clearRect(0,0,150,150); 
+        pCtx.fillStyle='#263238'; pCtx.fillRect(0,0,150,150); pCtx.fillStyle='#5D4037'; pCtx.fillRect(0,110,150,40);
+        frame++; DRAW_FUNCS[skin.type](pCtx, 45, 50, 60, 60, skin.color, skin.detail, frame, false);
+        if(!document.getElementById('skinDetailScreen').classList.contains('hidden')) previewAnimationFrame = requestAnimationFrame(animatePreview);
+    }
+    animatePreview();
+}
+function handleSkinAction() {
+    let unlocked = savedData.unlockedSkins.includes(selectedSkinId);
+    if (unlocked) { savedData.currentSkin = selectedSkinId; localStorage.setItem('dinoUltraSave', JSON.stringify(savedData)); closeDetail(); openShop(); } 
+    else { 
+        let s = SKINS[selectedSkinId];
+        let cost = s.currency==='diamond' ? `💎 ${s.price}` : `🪙 ${s.price}`;
+        document.getElementById('confirmText').innerText = `¿Gastar ${cost}?`; document.getElementById('confirmScreen').classList.remove('hidden'); 
+    }
+}
+function confirmPurchase() {
+    let s = SKINS[selectedSkinId];
+    let canBuy = (s.currency === 'diamond') ? (savedData.totalDiamonds >= s.price) : (savedData.totalCoins >= s.price);
+    
+    if(canBuy) {
+        if(s.currency === 'diamond') savedData.totalDiamonds -= s.price; else savedData.totalCoins -= s.price;
+        savedData.unlockedSkins.push(selectedSkinId); savedData.currentSkin = selectedSkinId;
+        localStorage.setItem('dinoUltraSave', JSON.stringify(savedData)); closeConfirm(); closeDetail(); openShop();
+    } else { alert("No tienes suficientes fondos"); closeConfirm(); }
+}
+function closeDetail() { document.getElementById('skinDetailScreen').classList.add('hidden'); document.getElementById('shopScreen').classList.remove('hidden'); if(previewAnimationFrame) cancelAnimationFrame(previewAnimationFrame); }
+function closeConfirm() { document.getElementById('confirmScreen').classList.add('hidden'); }
+
+init();
+</script>
+</body>
+</html>
+
