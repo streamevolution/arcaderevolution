@@ -13,9 +13,9 @@ const games = [
     },
     {
         id: 3,
-        title: "Memoria Challenge",
-        image: "https://placehold.co/600x400/FF007B/00FFEE?text=Memoria+Challenge",
-        url: "nodisponible.html"
+        title: "Dino Legends Revolution",
+        image: "https://i.postimg.cc/gJNp0xrT/1763593246677.png",
+        url: "dinosaurio.html"
     },
     {
         id: 4,
