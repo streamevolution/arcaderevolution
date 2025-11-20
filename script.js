@@ -7,7 +7,7 @@ const games = [
     },
     {
         id: 2,
-        title: "Snake Infinity Revolution",
+        title: "Toon Snake Revolution",
         image: "https://i.postimg.cc/7Z0HWXmq/1763566692505.png",
         url: "JuegoSnake.html"
     },
