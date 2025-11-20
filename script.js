@@ -19,9 +19,9 @@ const games = [
     },
     {
         id: 4,
-        title: "Ahorcado Kids",
-        image: "https://placehold.co/600x400/7BFF00/1A0033?text=Ahorcado+Kids",
-        url: "nodisponible.html"
+        title: "Water Puzzle Revolution",
+        image: "https://i.postimg.cc/q7ZCgRKD/1763618752737.png",
+        url: "WaterSortPuzzle.html"
     },
     {
         id: 5,
