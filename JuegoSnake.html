@@ -103,8 +103,8 @@
 
         /* --- AD STYLES --- */
         #screen-ad {
-            background: #000 !important; /* Fondo negro para inmersión */
-            z-index: 999; /* Por encima de todo */
+            background: #000 !important;
+            z-index: 999;
         }
         .ad-wrapper {
             width: 100%;
@@ -120,6 +120,7 @@
             max-height: 70vh;
             object-fit: contain;
             background: #000;
+            cursor: pointer; /* Indica que es clicable */
         }
         .ad-ui-bottom {
             position: absolute;
@@ -168,6 +169,13 @@
             font-size: 1.2rem;
             background: rgba(0,0,0,0.5);
         }
+        /* Mensaje de "Visitar sitio" sutil */
+        .ad-hint {
+            color: #fff;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            animation: pulseBtn 1s infinite;
+        }
     </style>
 </head>
 <body>
@@ -181,7 +189,8 @@
 <div id="screen-ad" class="screen hidden">
     <div class="ad-wrapper">
         <div class="ad-timer-corner" id="ad-countdown-display">5</div>
-        <video id="ad-video" playsinline webkit-playsinline></video>
+        <video id="ad-video" playsinline webkit-playsinline onclick="Ads.clickAd()"></video>
+        <div class="ad-hint">TOCA EL VIDEO PARA MÁS INFO</div>
         
         <div class="ad-ui-bottom">
             <button id="btn-skip" class="skip-btn" onclick="Ads.skip()">Espera 5s...</button>
@@ -219,7 +228,7 @@
 
     <div id="screen-menu" class="screen hidden">
         <div class="menu-mascot"></div>
-        <h1>TOON<br>SNAKE<br>REVOLUTION</h1>
+        <h1>TOON<br>SNAKE</h1>
         <div class="credits-text">Creado por Juan Zamora</div>
         
         <div style="background:var(--ui-bg); padding:10px 25px; border-radius:15px; border:3px solid var(--text); box-shadow:var(--shadow-hard); transform:rotate(2deg); margin-bottom: 20px;">
@@ -262,28 +271,37 @@
 <script>
 /* --- ADS SYSTEM --- */
 const Ads = {
-    videos: ['anuncio.mp4', 'anuncio2.mp4', 'anuncio3.mp4'],
+    // AQUÍ CONFIGURAS TUS VIDEOS Y TUS ENLACES
+    videos: [
+        { src: 'anuncio.mp4', url: 'https://www.facebook.com/reel/818844437624585/?app=fbl' },
+        { src: 'anuncio2.mp4', url: 'https://www.facebook.com/reel/818844437624585/?app=fbl' },
+        { src: 'anuncio3.mp4', url: 'https://www.facebook.com/reel/818844437624585/?app=fbl' }
+    ],
     played: 0,
     interval: 10, // Anuncio cada 10 partidas
     timerVal: 5,
     timerInt: null,
     canSkip: false,
+    currentUrl: '', // Almacena la URL del anuncio actual
 
     check() {
         this.played++;
         if(this.played % this.interval === 0) {
             this.show();
-            return true; // Se mostró anuncio
+            return true; 
         }
-        return false; // No se mostró
+        return false; 
     },
 
     show() {
         const v = document.getElementById('ad-video');
-        // Seleccionar video random
-        const src = this.videos[Math.floor(Math.random() * this.videos.length)];
-        v.src = src;
         
+        // Seleccionar video y enlace random
+        const adData = this.videos[Math.floor(Math.random() * this.videos.length)];
+        
+        v.src = adData.src;
+        this.currentUrl = adData.url; // Guardamos la URL para el clic
+
         // Reset UI
         this.canSkip = false;
         this.timerVal = 5;
@@ -317,12 +335,18 @@ const Ads = {
         document.getElementById('ad-countdown-display').innerText = "X";
     },
 
+    clickAd() {
+        // Abre la URL guardada
+        if(this.currentUrl) {
+            window.open(this.currentUrl, '_blank');
+        }
+    },
+
     skip() {
         if(!this.canSkip) return;
         const v = document.getElementById('ad-video');
         v.pause();
         v.currentTime = 0;
-        // Ir a la pantalla de Game Over real
         Game.showScreen('screen-over');
         Game.state = 'OVER';
     }
@@ -479,21 +503,15 @@ const Game = {
     genObstacles() {
         this.obstacles=[]; 
         if(this.level < 2) return;
-        
-        // Logic for 1000 levels difficulty curve
         const count = Math.min(70, 3 + Math.floor(this.level / 2));
-        
-        // Every 50 levels, add a dense wall pattern
         if(this.level > 50 && this.level % 10 === 0) {
             for(let i=4; i<14; i++) { this.obstacles.push({x:i,y:9}); this.obstacles.push({x:9,y:i}); }
         }
-        
-        // Random Scatter
         for(let i=0; i<count; i++) {
             let o, safe=false;
             while(!safe) {
                 o={x:R(GRID),y:R(GRID)}; 
-                if(Math.abs(o.x-9)>3 || Math.abs(o.y-12)>3) { // Safe zone around spawn
+                if(Math.abs(o.x-9)>3 || Math.abs(o.y-12)>3) { 
                     if(!this.obstacles.some(obs=>obs.x==o.x && obs.y==o.y)) safe=true;
                 }
             }
