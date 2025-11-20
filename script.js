@@ -25,9 +25,9 @@ const games = [
     },
     {
         id: 5,
-        title: "Pacman Retro",
-        image: "https://placehold.co/600x400/F0E68C/8B0000?text=Pacman+Retro",
-        url: "nodisponible.html"
+        title: "Block Puzzle",
+        image: "https://i.postimg.cc/vB5gXdDw/1763625250803.png",
+        url: "BlockPuzzle.html"
     },
     {
         id: 6,
