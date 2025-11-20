@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Block Puzzle: Multi-Link Ads</title>
+    <link href="https://fonts.googleapis.com/css2?family=Titan+One&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ui-border: #2c3e50;
+            --board-bg: #5d4037;
+            --board-frame: #8d6e63;
+            --transition-speed: 0.8s;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
+        body {
+            margin: 0; height: 100vh; overflow: hidden; font-family: 'Fredoka', sans-serif;
+            background-color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: background-color var(--transition-speed);
+        }
+        #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none; }
+        
+        /* TEMAS */
+        body.theme-patio { background-color: #48dbfb; }
+        body.theme-noche { background-color: #2c3e50; background-image: linear-gradient(to bottom, #0f2027, #203a43, #2c3e50); }
+        body.theme-acapulco { background-color: #4fc3f7; }
+        body.theme-escuela { background-color: #27ae60; background-image: radial-gradient(#2ecc71 15%, transparent 16%); background-size: 20px 20px; }
+        body.theme-volcan { background-color: #c0392b; background-image: repeating-linear-gradient(45deg, #c0392b 0, #e74c3c 20px); }
+
+        /* Animaciones Fondo */
+        .sun-rays { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.2) 0deg 10deg, transparent 10deg 20deg); border-radius: 50%; animation: spin 20s linear infinite; }
+        .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.8; }
+        .cloud::after { content: ''; position: absolute; top: -20px; left: 15px; width: 40px; height: 40px; background: white; border-radius: 50%; }
+        .cloud.c1 { width: 100px; height: 40px; top: 10%; left: -120px; animation: floatCloud 15s linear infinite; }
+        .moon { position: absolute; top: 50px; right: 30px; width: 80px; height: 80px; background: #f1c40f; border-radius: 50%; box-shadow: 0 0 20px #f39c12; animation: pulseMoon 3s infinite; }
+        .star { position: absolute; width: 4px; height: 4px; background: white; border-radius: 50%; animation: twinkle 1.5s infinite alternate; }
+        .particle-bg { position: absolute; background: rgba(255,255,255,0.2); border-radius: 50%; animation: floatUp 10s linear infinite; }
+
+        @keyframes spin { from { transform: translateX(-50%) rotate(0deg); } to { transform: translateX(-50%) rotate(360deg); } }
+        @keyframes floatCloud { from { left: -150px; } to { left: 110%; } }
+        @keyframes pulseMoon { 50% { transform: scale(1.05); box-shadow: 0 0 30px #f39c12; } }
+        @keyframes twinkle { 0% { opacity: 0.3; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+        @keyframes floatUp { 0% { transform: translateY(100vh); opacity: 0; } 100% { transform: translateY(-10vh); opacity: 0; } }
+
+        /* UI */
+        .header { width: 95%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; z-index: 10; position: relative; }
+        .badge { background: #fff; border: 3px solid var(--ui-border); border-radius: 15px; padding: 8px 16px; min-width: 80px; text-align: center; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
+        .badge.bump { transform: scale(1.2); }
+        .label { font-size: 0.7rem; font-weight: 700; opacity: 0.7; text-transform: uppercase; color: #333; }
+        .value { font-family: 'Titan One', cursive; font-size: 1.4rem; color: var(--ui-border); }
+        .mute-btn { background: white; border: 3px solid var(--ui-border); border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+        
+        .mission-bar { width: 95%; max-width: 450px; background: var(--ui-border); border-radius: 50px; padding: 4px; margin-bottom: 15px; display: flex; align-items: center; color: white; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid white; z-index: 10; }
+        .mission-progress { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: linear-gradient(90deg, #fab1a0, #e17055); transition: width 0.5s ease; }
+        .mission-content { position: relative; z-index: 2; display: flex; justify-content: space-between; width: 100%; padding: 0 15px; font-weight: bold; }
+
+        .board-container { background: var(--board-frame); padding: 10px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; z-index: 5; transition: background-color 0.5s; }
+        #grid { display: grid; gap: 3px; background: var(--board-bg); padding: 4px; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); transition: background-color 0.5s; }
+        .cell { background: rgba(0,0,0,0.15); border-radius: 6px; position: relative; }
+        .cell.filled { border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); z-index: 5; }
+        .cell.highlight { background: rgba(255,255,255,0.3); box-shadow: 0 0 10px white; z-index: 6; }
+        .cell.obstacle { background-color: #a1887f; background-image: linear-gradient(45deg, transparent 48%, #5d4037 48%, #5d4037 52%, transparent 52%), linear-gradient(-45deg, transparent 48%, #5d4037 48%, #5d4037 52%, transparent 52%); border: 3px solid #5d4037; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+
+        #dock { margin-top: 20px; width: 95%; max-width: 450px; height: 130px; display: flex; justify-content: space-around; align-items: center; background: rgba(255,255,255,0.6); border-radius: 20px; border: 2px dashed rgba(0,0,0,0.2); backdrop-filter: blur(10px); z-index: 10; }
+        .piece-preview { width: 90px; height: 90px; display: flex; justify-content: center; align-items: center; cursor: grab; transition: transform 0.1s; }
+        .piece-preview:active { transform: scale(0.9); cursor: grabbing; }
+        .mini-grid { display: grid; gap: 1px; pointer-events: none; }
+        .mini-block { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2); }
+        
+        #ghost { position: absolute; pointer-events: none; z-index: 1000; display: grid; gap: 3px; opacity: 0.9; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)); }
+        .ghost-block { border-radius: 6px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.3); }
+
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 2000; }
+        .overlay.active { opacity: 1; pointer-events: auto; }
+        .modal { background: white; width: 85%; max-width: 350px; padding: 20px; border-radius: 20px; text-align: center; border: 5px solid var(--ui-border); transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .overlay.active .modal { transform: scale(1); }
+        h2 { font-family: 'Titan One', cursive; color: #e17055; font-size: 2rem; margin: 0 0 10px 0; }
+        p { color: #555; font-weight: bold; }
+        .btn { background: #00b894; color: white; border: none; padding: 12px 30px; font-size: 1.2rem; font-family: 'Titan One', cursive; border-radius: 50px; cursor: pointer; margin-top: 15px; box-shadow: 0 5px 0 #008468; transition: transform 0.1s; }
+        .btn:active { transform: translateY(5px); box-shadow: none; }
+
+        .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 999; }
+        .anim-pop { animation: pop 0.3s forwards; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(0); } }
+
+        /* --- SISTEMA DE ANUNCIOS (ADS) --- */
+        #ad-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; 
+            display: none; 
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        #ad-container.active { display: flex; }
+        
+        #ad-video { 
+            width: 100%; max-width: 500px; height: auto; max-height: 80vh; 
+            background: #111; 
+            cursor: pointer; /* Manita al pasar el mouse */
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        
+        #ad-skip-btn {
+            margin-top: 20px; padding: 15px 40px; border-radius: 30px;
+            font-family: 'Fredoka', sans-serif; font-weight: bold; font-size: 1.2rem;
+            color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2); cursor: not-allowed;
+            transition: all 0.3s;
+        }
+        #ad-skip-btn.enabled {
+            background: #27ae60; color: white; cursor: pointer;
+            border-color: #2ecc71; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.5);
+        }
+        .ad-label {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            padding: 5px 10px; border-radius: 5px; font-size: 0.8rem;
+            pointer-events: none;
+        }
+        .tap-hint {
+            color: white; margin-bottom: 10px; font-weight: bold; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 50% { opacity: 0.5; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-layer"></div>
+
+    <div id="ad-container">
+        <span class="ad-label">ANUNCIO</span>
+        <div class="tap-hint">👆 TOCA EL VIDEO PARA IR AL SITIO WEB</div>
+        <video id="ad-video" playsinline></video>
+        <div id="ad-skip-btn" onclick="skipAd()">Espera 5s...</div>
+    </div>
+
+    <div class="header">
+        <div class="badge" id="level-badge">
+            <div class="label">NIVEL</div>
+            <div class="value" id="level-display">1</div>
+        </div>
+        <div class="mute-btn" id="sound-btn" onclick="toggleSound()">🔊</div>
+        <div class="badge" id="score-badge">
+            <div class="label">PUNTOS</div>
+            <div class="value" id="score-display">0</div>
+        </div>
+    </div>
+
+    <div class="mission-bar">
+        <div class="mission-progress" id="mission-bar"></div>
+        <div class="mission-content">
+            <span id="mission-text">🎯 Misión</span>
+            <span id="mission-count">0/0</span>
+        </div>
+    </div>
+
+    <div class="board-container">
+        <div id="grid"></div>
+    </div>
+
+    <div id="dock"></div>
+
+    <div class="overlay" id="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-title">TITULO</h2>
+            <p id="modal-desc">Descripción</p>
+            <button class="btn" id="modal-btn">BOTON</button>
+        </div>
+    </div>
+
+<script>
+    const SoundEngine = {
+        ctx: null, enabled: true,
+        init: function() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+        playTone: function(f, t, d, v=0.1) {
+            if(!this.enabled || !this.ctx) return;
+            const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+            o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
+            g.gain.setValueAtTime(v, this.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+d);
+            o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+d);
+        },
+        playPop: function() { this.playTone(400+Math.random()*200, 'sine', 0.15, 0.2); },
+        playBreak: function() { this.playTone(100, 'square', 0.1, 0.2); setTimeout(()=>this.playTone(80, 'sawtooth', 0.1, 0.2), 50); },
+        playCombo: function(c) { const b=300; for(let i=0;i<c;i++) setTimeout(()=>this.playTone(b+(i*100), 'triangle', 0.2, 0.2), i*100); },
+        playWin: function() { [523, 659, 783, 1046].forEach((f,i)=>setTimeout(()=>this.playTone(f, 'square', 0.2, 0.15), i*100)); },
+        playOver: function() { [400, 300, 200, 100].forEach((f,i)=>setTimeout(()=>this.playTone(f, 'sawtooth', 0.3, 0.2), i*150)); }
+    };
+
+    const THEMES = ['theme-patio', 'theme-noche', 'theme-acapulco', 'theme-escuela', 'theme-volcan'];
+    const PIECE_COLORS = ['#ff7675', '#74b9ff', '#55efc4', '#fdcb6e', '#a29bfe', '#e17055'];
+    const SHAPES = [
+        [[1]], [[1,1]], [[1,1,1]], [[1,1,1,1]], [[1],[1]], [[1],[1],[1]], [[1],[1],[1],[1]],
+        [[1,1],[1,1]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], [[1,1,1],[0,1,0]], [[1,1,0],[0,1,1]], [[1,0],[1,1]]
+    ];
+    
+    // --- GESTOR DE ANUNCIOS MEJORADO (MULTI-LINK) ---
+    const AdManager = {
+        lossCounter: 0,
+        // --- ⬇️ CONFIGURA AQUÍ TUS VIDEOS Y ENLACES ⬇️ ---
+        playlist: [
+            { video: 'anuncio.mp4',  link: 'https://www.facebook.com/reel/818844437624585/?app=fbl' }, // Link video 1
+            { video: 'anuncio2.mp4', link: 'https://www.facebook.com/reel/818844437624585/?app=fbl' }, // Link video 2
+            { video: 'anuncio3.mp4', link: 'https://www.facebook.com/reel/818844437624585/?app=fbl' } // Link video 3
+        ],
+        // ------------------------------------------------
+        active: false,
+        timer: null,
+        currentAdLink: '',
+        
+        check: function() {
+            this.lossCounter++;
+            if (this.lossCounter >= 8) {
+                this.lossCounter = 0;
+                this.show();
+                return true;
+            }
+            return false;
+        },
+        
+        show: function() {
+            this.active = true;
+            const container = document.getElementById('ad-container');
+            const video = document.getElementById('ad-video');
+            const btn = document.getElementById('ad-skip-btn');
+            
+            // Selección Aleatoria de Objeto (Video + Link)
+            const adData = this.playlist[Math.floor(Math.random() * this.playlist.length)];
+            
+            video.src = adData.video;
+            this.currentAdLink = adData.link; // Guardar link actual
+            
+            video.load();
+            video.play().catch(e => console.log("Autoplay bloqueado"));
+            
+            // Evento CLICK para abrir el link específico del video actual
+            video.onclick = () => {
+                window.open(this.currentAdLink, '_blank');
+            };
+
+            container.classList.add('active');
+            btn.classList.remove('enabled');
+            
+            let timeLeft = 5;
+            btn.innerText = `Espera ${timeLeft}s...`;
+            
+            if(this.timer) clearInterval(this.timer);
+            
+            this.timer = setInterval(() => {
+                timeLeft--;
+                if(timeLeft > 0) {
+                    btn.innerText = `Espera ${timeLeft}s...`;
+                } else {
+                    btn.innerText = "OMITIR >>";
+                    btn.classList.add('enabled');
+                    clearInterval(this.timer);
+                }
+            }, 1000);
+        },
+        
+        close: function() {
+            const btn = document.getElementById('ad-skip-btn');
+            if (!btn.classList.contains('enabled')) return;
+            
+            const container = document.getElementById('ad-container');
+            const video = document.getElementById('ad-video');
+            
+            video.pause();
+            container.classList.remove('active');
+            this.active = false;
+            showGameOverModal();
+        }
+    };
+
+    let state = {
+        level: 1, score: 0, gridSize: 8, grid: [],
+        mission: { target: 10, current: 0, type: 'lines' },
+        pieces: [], isGameOver: false
+    };
+
+    const els = {
+        grid: document.getElementById('grid'), dock: document.getElementById('dock'),
+        level: document.getElementById('level-display'), score: document.getElementById('score-display'),
+        mBar: document.getElementById('mission-bar'), mText: document.getElementById('mission-text'),
+        mCount: document.getElementById('mission-count'), modal: document.getElementById('modal-overlay'),
+        mTitle: document.getElementById('modal-title'), mDesc: document.getElementById('modal-desc'),
+        mBtn: document.getElementById('modal-btn'), bgLayer: document.getElementById('bg-layer'),
+        soundBtn: document.getElementById('sound-btn')
+    };
+
+    window.toggleSound = function() {
+        SoundEngine.enabled = !SoundEngine.enabled;
+        els.soundBtn.innerText = SoundEngine.enabled ? '🔊' : '🔇';
+        if(SoundEngine.enabled) SoundEngine.init();
+    };
+    
+    window.skipAd = function() {
+        AdManager.close();
+    };
+
+    function init() {
+        document.body.addEventListener('click', () => SoundEngine.init(), {once:true});
+        const saved = localStorage.getItem('blockMasterLevel');
+        if(saved) state.level = parseInt(saved);
+        loadLevel(state.level);
+    }
+
+    function loadLevel(lvl) {
+        els.modal.classList.remove('active'); 
+        state.isGameOver = false;
+        state.grid = [];
+        
+        if (lvl <= 10) state.gridSize = 8;
+        else if (lvl <= 40) state.gridSize = 9;
+        else state.gridSize = 10;
+
+        const themeIndex = Math.floor((lvl - 1) / 10) % THEMES.length;
+        document.body.className = THEMES[themeIndex];
+        applyThemeEffects(THEMES[themeIndex]);
+
+        generateMission(lvl);
+        renderGrid();
+        updateUI();
+        
+        if (state.mission.type === 'obstacles') {
+            generatePatternObstacles(state.mission.target);
+        } else if (lvl > 5) {
+            let obsCount = Math.min(25, Math.floor(lvl / 1.5));
+            generatePatternObstacles(obsCount);
+        }
+
+        generatePieces();
+    }
+
+    function applyThemeEffects(themeName) {
+        els.bgLayer.innerHTML = ''; 
+        if (themeName === 'theme-patio') els.bgLayer.innerHTML = `<div class="sun-rays"></div><div class="cloud c1"></div>`;
+        else if (themeName === 'theme-noche') {
+            let html = '<div class="moon"></div>';
+            for(let i=0; i<15; i++) html += `<div class="star" style="top:${Math.random()*100}%; left:${Math.random()*100}%"></div>`;
+            els.bgLayer.innerHTML = html;
+        }
+        else if (themeName === 'theme-escuela' || themeName === 'theme-volcan') {
+             let html = '';
+             for(let i=0; i<10; i++) html += `<div class="particle-bg" style="left:${Math.random()*100}%; width:${Math.random()*10+5}px; height:${Math.random()*10+5}px; animation-duration:${Math.random()*5+5}s"></div>`;
+             els.bgLayer.innerHTML = html;
+        }
+    }
+
+    function generateMission(lvl) {
+        if(lvl % 5 === 0) { 
+            state.mission = { type: 'score', target: lvl * 800, current: 0, label: '¡GRAN PUNTAJE!' };
+        } else if (lvl % 3 === 0) {
+            let targetBoxes = Math.min(15, 5 + Math.floor(lvl/5));
+            state.mission = { type: 'obstacles', target: targetBoxes, current: 0, label: 'ROMPER CAJAS' };
+        } else {
+            state.mission = { type: 'lines', target: 5 + Math.floor(lvl/3), current: 0, label: 'HACER LÍNEAS' };
+        }
+    }
+
+    function renderGrid() {
+        els.grid.innerHTML = '';
+        els.grid.style.gridTemplateColumns = `repeat(${state.gridSize}, 1fr)`;
+        const maxWidth = Math.min(window.innerWidth * 0.9, 420);
+        const cellSize = (maxWidth - 20) / state.gridSize;
+
+        for(let y=0; y<state.gridSize; y++) {
+            let row = [];
+            for(let x=0; x<state.gridSize; x++) {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.style.width = `${cellSize}px`;
+                cell.style.height = `${cellSize}px`;
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                els.grid.appendChild(cell);
+                row.push(null);
+            }
+            state.grid.push(row);
+        }
+    }
+
+    function generatePatternObstacles(count) {
+        let placed = 0;
+        let attempts = 0;
+        while(placed < count && attempts < 200) {
+            let x = Math.floor(Math.random() * state.gridSize);
+            let y = Math.floor(Math.random() * state.gridSize);
+            if (state.level < 20) {
+                if (x > 2 && x < state.gridSize-3 && y > 2 && y < state.gridSize-3) { attempts++; continue; }
+            }
+            if(!state.grid[y][x]) {
+                state.grid[y][x] = 'obstacle';
+                const cell = getCell(x,y);
+                cell.classList.add('filled', 'obstacle');
+                placed++;
+            }
+            attempts++;
+        }
+    }
+
+    function generatePieces() {
+        els.dock.innerHTML = '';
+        state.pieces = [];
+        for(let i=0; i<3; i++) {
+            let shape;
+            if (isBoardEmpty() || state.score === 0) {
+                shape = SHAPES[Math.floor(Math.random() * 6)];
+            } else {
+                shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            }
+            const color = PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)];
+            state.pieces.push({shape, color, id: i});
+            createPieceDOM(shape, color, i);
+        }
+        setTimeout(checkGameOver, 500);
+    }
+    
+    function isBoardEmpty() {
+        for(let row of state.grid) {
+            for(let cell of row) if(cell === 'block') return false;
+        }
+        return true;
+    }
+
+    function createPieceDOM(shape, color, id) {
+        const wrap = document.createElement('div');
+        wrap.className = 'piece-preview';
+        const miniGrid = document.createElement('div');
+        miniGrid.className = 'mini-grid';
+        miniGrid.style.gridTemplateColumns = `repeat(${shape[0].length}, 1fr)`;
+        shape.forEach(row => {
+            row.forEach(val => {
+                const b = document.createElement('div');
+                if(val) { b.className = 'mini-block'; b.style.backgroundColor = color; }
+                miniGrid.appendChild(b);
+            });
+        });
+        wrap.appendChild(miniGrid);
+        const start = (e) => initDrag(e, wrap, shape, color, id);
+        wrap.addEventListener('mousedown', start);
+        wrap.addEventListener('touchstart', start, {passive: false});
+        els.dock.appendChild(wrap);
+    }
+
+    let drag = null;
+    function initDrag(e, el, shape, color, id) {
+        e.preventDefault();
+        if(state.isGameOver) return;
+        const touch = e.touches ? e.touches[0] : e;
+        el.style.opacity = 0;
+
+        const ghost = document.createElement('div');
+        ghost.id = 'ghost';
+        ghost.style.gridTemplateColumns = `repeat(${shape[0].length}, 1fr)`;
+        const gridRect = els.grid.getBoundingClientRect();
+        const cellSize = gridRect.width / state.gridSize;
+
+        shape.forEach(row => {
+            row.forEach(val => {
+                const b = document.createElement('div');
+                if(val) { b.className = 'ghost-block'; b.style.backgroundColor = color; b.style.width = cellSize + 'px'; b.style.height = cellSize + 'px'; }
+                else { b.style.width = cellSize + 'px'; b.style.height = cellSize + 'px'; b.style.opacity = 0; }
+                ghost.appendChild(b);
+            });
+        });
+        document.body.appendChild(ghost);
+        drag = { el, shape, color, id, ghost, w: shape[0].length, h: shape.length, cellSize, gridRect };
+        const move = (ev) => onDragMove(ev);
+        const end = (ev) => onDragEnd(ev, move, end);
+        document.addEventListener('mousemove', move);
+        document.addEventListener('touchmove', move, {passive: false});
+        document.addEventListener('mouseup', end);
+        document.addEventListener('touchend', end);
+        onDragMove(e);
+        SoundEngine.playTone(200, 'sine', 0.1);
+    }
+
+    function onDragMove(e) {
+        if(!drag) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const ghostX = touch.clientX;
+        const ghostY = touch.clientY - 90;
+        drag.ghost.style.left = (ghostX - (drag.ghost.offsetWidth/2)) + 'px';
+        drag.ghost.style.top = (ghostY - (drag.ghost.offsetHeight/2)) + 'px';
+        checkPlacement(ghostX, ghostY);
+    }
+
+    function checkPlacement(x, y) {
+        document.querySelectorAll('.highlight').forEach(c => c.classList.remove('highlight'));
+        drag.target = null;
+        const relativeX = x - drag.gridRect.left;
+        const relativeY = y - drag.gridRect.top;
+        const col = Math.floor(relativeX / drag.cellSize);
+        const row = Math.floor(relativeY / drag.cellSize);
+        const startCol = col - Math.floor(drag.w / 2);
+        const startRow = row - Math.floor(drag.h / 2);
+
+        if (canPlace(startCol, startRow, drag.shape)) {
+            drag.target = { c: startCol, r: startRow };
+            for(let r=0; r<drag.h; r++) {
+                for(let c=0; c<drag.w; c++) {
+                    if(drag.shape[r][c]) {
+                        const cell = getCell(startCol+c, startRow+r);
+                        if(cell) cell.classList.add('highlight');
+                    }
+                }
+            }
+        }
+    }
+
+    function canPlace(c, r, shape) {
+        for(let y=0; y<shape.length; y++) {
+            for(let x=0; x<shape[y].length; x++) {
+                if(shape[y][x]) {
+                    if(c+x < 0 || c+x >= state.gridSize || r+y < 0 || r+y >= state.gridSize) return false;
+                    if(state.grid[r+y][c+x]) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function onDragEnd(e, moveFn, endFn) {
+        document.removeEventListener('mousemove', moveFn);
+        document.removeEventListener('touchmove', moveFn);
+        document.removeEventListener('mouseup', endFn);
+        document.removeEventListener('touchend', endFn);
+        drag.ghost.remove();
+        document.querySelectorAll('.highlight').forEach(c => c.classList.remove('highlight'));
+
+        if(drag.target) {
+            placePiece(drag.target.c, drag.target.r, drag.shape, drag.color);
+            drag.el.remove();
+            const idx = state.pieces.findIndex(p => p.id === drag.id);
+            if(idx > -1) state.pieces.splice(idx, 1);
+            checkLines();
+            if(state.pieces.length === 0) setTimeout(generatePieces, 300);
+            else checkGameOver();
+            SoundEngine.playPop();
+        } else {
+            drag.el.style.opacity = 1;
+            drag.el.animate([{ transform: 'scale(0.8)' }, { transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 300 });
+        }
+        drag = null;
+    }
+
+    function placePiece(c, r, shape, color) {
+        for(let y=0; y<shape.length; y++) {
+            for(let x=0; x<shape[y].length; x++) {
+                if(shape[y][x]) {
+                    state.grid[r+y][c+x] = 'block';
+                    const cell = getCell(c+x, r+y);
+                    cell.classList.add('filled');
+                    cell.style.backgroundColor = color;
+                    cell.animate([{ transform: 'scale(0.5)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 200 });
+                }
+            }
+        }
+        addScore(10);
+    }
+
+    function checkLines() {
+        let rows = [], cols = [];
+        for(let y=0; y<state.gridSize; y++) if(state.grid[y].every(v => v !== null)) rows.push(y);
+        for(let x=0; x<state.gridSize; x++) {
+            let full = true;
+            for(let y=0; y<state.gridSize; y++) if(!state.grid[y][x]) full = false;
+            if(full) cols.push(x);
+        }
+
+        if(rows.length + cols.length > 0) {
+            SoundEngine.playCombo(rows.length + cols.length);
+            const total = rows.length + cols.length;
+            let obstaclesBroken = 0;
+            let coords = [];
+            const process = (x,y) => {
+                if(state.grid[y][x] === 'obstacle') obstaclesBroken++;
+                state.grid[y][x] = null;
+                coords.push({x,y});
+            };
+            rows.forEach(y => { for(let x=0; x<state.gridSize; x++) process(x,y); });
+            cols.forEach(x => { for(let y=0; y<state.gridSize; y++) process(x,y); });
+            let unique = [...new Set(coords.map(JSON.stringify))].map(JSON.parse);
+
+            let pts = total * 100 * total;
+            if(obstaclesBroken) {
+                pts += obstaclesBroken * 50;
+                SoundEngine.playBreak();
+            }
+            addScore(pts);
+
+            if(state.mission.type === 'lines') updateMission(total);
+            if(state.mission.type === 'obstacles') updateMission(obstaclesBroken);
+
+            unique.forEach((p, i) => {
+                setTimeout(() => {
+                    const cell = getCell(p.x, p.y);
+                    spawnParticles(cell, cell.style.backgroundColor || '#fff');
+                    cell.classList.add('anim-pop');
+                    cell.classList.remove('filled', 'obstacle');
+                    cell.style.backgroundColor = '';
+                    setTimeout(() => cell.classList.remove('anim-pop'), 300);
+                }, i * 10);
+            });
+        }
+    }
+
+    function spawnParticles(el, color) {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        for(let i=0; i<6; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle'; p.style.backgroundColor = color;
+            p.style.left = cx + 'px'; p.style.top = cy + 'px';
+            document.body.appendChild(p);
+            const angle = Math.random() * Math.PI * 2;
+            const vel = Math.random() * 60 + 20;
+            const tx = Math.cos(angle) * vel; const ty = Math.sin(angle) * vel;
+            p.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }], { duration: 600 }).onfinish = () => p.remove();
+        }
+    }
+
+    function updateMission(n) {
+        state.mission.current += n;
+        updateUI();
+        if(state.mission.current >= state.mission.target) {
+            SoundEngine.playWin();
+            setTimeout(() => {
+                els.mTitle.innerText = "¡NIVEL COMPLETADO!";
+                els.mDesc.innerText = `¡Has dominado el nivel ${state.level}!`;
+                els.mBtn.innerText = "CONTINUAR";
+                els.mBtn.onclick = nextLevel;
+                els.modal.classList.add('active');
+            }, 500);
+        }
+    }
+
+    function checkGameOver() {
+        if(state.pieces.length === 0) return;
+        let possible = false;
+        for(let p of state.pieces) {
+            for(let y=0; y<state.gridSize; y++) {
+                for(let x=0; x<state.gridSize; x++) {
+                    if(canPlace(x,y,p.shape)) { possible = true; break; }
+                }
+                if(possible) break;
+            }
+            if(possible) break;
+        }
+        if(!possible) {
+            state.isGameOver = true;
+            const adShown = AdManager.check();
+            if (!adShown) {
+                showGameOverModal();
+            }
+        }
+    }
+    
+    function showGameOverModal() {
+        SoundEngine.playOver();
+        els.mTitle.innerText = "¡SIN MOVIMIENTOS!";
+        els.mDesc.innerText = "Inténtalo de nuevo.";
+        els.mBtn.innerText = "REINTENTAR";
+        els.mBtn.onclick = () => loadLevel(state.level);
+        els.modal.classList.add('active');
+    }
+
+    function addScore(n) {
+        state.score += n;
+        if(state.mission.type === 'score') updateMission(n);
+        updateUI();
+        document.getElementById('score-badge').classList.add('bump');
+        setTimeout(() => document.getElementById('score-badge').classList.remove('bump'), 200);
+    }
+
+    function updateUI() {
+        els.level.innerText = state.level;
+        els.score.innerText = state.score;
+        els.mText.innerText = state.mission.label;
+        els.mCount.innerText = `${state.mission.current}/${state.mission.target}`;
+        let pct = Math.min(100, (state.mission.current / state.mission.target) * 100);
+        els.mBar.style.width = `${pct}%`;
+    }
+
+    function getCell(x, y) { return els.grid.querySelector(`div[data-x="${x}"][data-y="${y}"]`); }
+
+    function nextLevel() {
+        state.level++;
+        localStorage.setItem('blockMasterLevel', state.level);
+        loadLevel(state.level);
+    }
+
+    init();
+</script>
+</body>
+</html>
